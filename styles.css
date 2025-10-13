@@ -1,0 +1,167 @@
+:root{
+  --bg:#0b1020; --panel:#121938; --muted:#8aa0ff;
+  --text:#e9edff; --soft:#1a234a; --line:#273160;
+  --primary:#4f7cff; --danger:#ff5f7a; --warn:#ffb454;
+  --ok:#39d98a;
+  --radius:14px;
+  --shadow:0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+  background:linear-gradient(160deg,#0b1020 0%,#101a36 60%,#0f1730 100%);
+  color:var(--text);
+}
+.app{display:flex; min-height:100vh}
+
+.sidebar{
+  width:280px; background:linear-gradient(180deg,#0e1533,#0a1026);
+  border-right:1px solid var(--line); padding:18px; position:sticky; top:0; height:100vh;
+  display:flex; flex-direction:column; gap:14px;
+}
+.brand{font-weight:800; font-size:20px; letter-spacing:.5px; margin:6px 6px 8px}
+.menu{display:flex; flex-direction:column; gap:8px}
+.menu-sep{opacity:.7; padding:8px 6px 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.06em}
+.nav-link{
+  text-align:left; background:transparent; color:var(--text); border:1px solid transparent;
+  padding:10px 12px; border-radius:10px; cursor:pointer; transition:.15s;
+}
+.nav-link:hover{background:rgba(255,255,255,.06)}
+.nav-link.active{background:var(--soft); border-color:var(--line)}
+.sidebar-footer{margin-top:auto; opacity:.7; padding:8px 6px}
+
+.main{flex:1; display:flex; flex-direction:column}
+.topbar{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:16px 22px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.15); backdrop-filter: blur(8px);
+  position:sticky; top:0; z-index:10;
+}
+.topbar h1{margin:0; font-size:20px}
+.topbar .btn{margin-left:8px}
+
+.view{padding:22px}
+.hidden{display:none}
+
+.cards{display:grid; grid-template-columns:repeat(4,1fr); gap:16px}
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px; box-shadow:var(--shadow);
+}
+.card-title{opacity:.8; font-size:12px; letter-spacing:.06em; text-transform:uppercase}
+.stat{font-size:26px; font-weight:800; margin-top:10px}
+
+.panel{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  margin-top:18px; padding:16px; box-shadow:var(--shadow);
+}
+.panel-header{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+.actions .btn{margin-left:8px}
+
+.table{width:100%; border-collapse:collapse}
+.table th,.table td{border-bottom:1px solid var(--line); padding:10px; font-size:14px}
+.table th{opacity:.8; text-align:left}
+.table td.num,.table th.num{text-align:right}
+.table tfoot th{border-top:1px solid var(--line)}
+
+.table-wrap{overflow:auto; border:1px solid var(--line); border-radius:12px}
+
+.btn{
+  background:#223064; color:var(--text); border:1px solid var(--line);
+  padding:8px 12px; border-radius:10px; cursor:pointer; transition:.15s;
+}
+.btn:hover{filter:brightness(1.1)}
+.btn.primary{background:linear-gradient(90deg,#496bff,#5e8dff); border-color:#4a73ff}
+.btn.danger{background:linear-gradient(90deg,#ff5678,#ff7b95); border-color:#ff6a86}
+.btn.warning{background:linear-gradient(90deg,#ffb65a,#ffc879); border-color:#ffc06b}
+.btn.tiny{padding:4px 8px; font-size:12px}
+
+.grid-2{display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
+.grid-2 .full{grid-column:1/-1}
+
+label{display:flex; flex-direction:column; gap:6px; font-size:14px}
+input,select,textarea{
+  background:#0e1633; color:var(--text); border:1px solid var(--line);
+  padding:10px 12px; border-radius:10px; outline:none;
+}
+input[type="month"], input[type="date"]{padding:8px 10px}
+
+.items{border:1px dashed var(--line); border-radius:12px; padding:10px}
+.items-header{display:grid; grid-template-columns:2fr 1fr 1fr 1fr 40px; gap:8px; opacity:.8; font-size:13px; margin-bottom:6px}
+.item-row{display:grid; grid-template-columns:2fr 1fr 1fr 1fr 40px; gap:8px; align-items:center; margin-bottom:8px}
+.it-subtotal{text-align:right; padding-right:8px}
+
+.tx-form{min-width:360px}
+.tx-form menu{display:flex; justify-content:flex-end; gap:8px; margin-top:12px}
+dialog{border:none; border-radius:14px; padding:0; overflow:hidden}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+
+.print-area{display:none}
+
+/* ===================== PRINT RULES (GLOBAL) ===================== */
+@page { margin: 12mm; }
+
+@media print{
+  /* Sembunyikan navigasi & tombol2 */
+  .sidebar,.topbar,
+  .panel-header .btn,
+  .actions .btn,
+  .btn,
+  .no-print,
+  .close-x { display:none !important; }
+
+  /* Sembunyikan panel yang berisi FORM (browser modern) */
+  .panel:has(form) { display:none !important; }
+
+  /* Fallback: sembunyikan panel form pertama pada view2 dokumen */
+  #view-receipt   .panel:first-of-type,
+  #view-quotation .panel:first-of-type,
+  #view-invoice   .panel:first-of-type { display:none !important; }
+
+  /* Sembunyikan kolom Aksi pada tabel bertanda has-actions */
+  table.has-actions th:last-child,
+  table.has-actions td:last-child { display:none !important; }
+
+  /* Naikkan konten & rapikan */
+  body{background:#fff; color:#000}
+  .main  { width:100% !important; margin:0 !important; padding:0 6mm !important; }
+  .view  { padding:0 !important; margin:0 !important; }
+  .panel { border:none; box-shadow:none; margin:0 0 8mm !important; }
+
+  /* Tampilkan area cetak khusus */
+  .print-area{display:block !important; page-break-inside:avoid; margin-top:4mm;}
+}
+
+@media (max-width:1100px){
+  .cards{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:720px){
+  .app{flex-direction:column}
+  .sidebar{position:relative; height:auto; width:100%}
+  .cards{grid-template-columns:1fr}
+}
+
+/* Close (X) universal */
+.close-x{
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--text);
+  width:28px; height:28px;
+  border-radius:50%;
+  line-height:1;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-weight:800; cursor:pointer;
+}
+.close-x:hover{ filter:brightness(1.15) }
+
+/* Posisi khusus untuk dialog transaksi */
+.tx-form{ position:relative; }
+.tx-form .close-x{
+  position:absolute; top:8px; right:8px;
+}
+
+/* Agar header panel rapi saat ditambah tombol */
+.panel-header{ position:relative; }
+.panel-header .close-x{
+  margin-left:8px;
+}

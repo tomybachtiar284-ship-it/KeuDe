@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Masuk | KeuDe</title>
+
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="login.css" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <div class="auth-landing">
+    <div class="split-card">
+
+      <!-- KIRI: hero -->
+      <aside class="left-hero">
+        <div class="hero-inner">
+          <div class="hero-logo">
+            <!-- ganti dengan logo file kamu -->
+            <img src="logo-perusahaan.png" alt="Logo" />
+          </div>
+          <h1 class="hero-title">Hello,<br/>welcome DKE!</h1>
+          <p class="hero-desc">
+            Informasi Pengawasan Laporan keuangan DKE secara efisien.
+          </p>
+          <button class="hero-cta" type="button">View more</button>
+        </div>
+        <!-- dekor garis -->
+        <div class="streaks"></div>
+      </aside>
+
+      <!-- KANAN: form -->
+      <main class="right-panel">
+        <!-- LOGIN -->
+        <form id="formLogin" class="pane" data-pane="login" autocomplete="on">
+          <h2 class="panel-title">Log In</h2>
+
+          <label>Email address</label>
+          <div class="input">
+            <input type="email" name="email" placeholder="name@mail.com" required />
+          </div>
+
+          <label>Password</label>
+          <div class="input">
+            <input type="password" name="password" placeholder="********" required />
+          </div>
+
+          <div class="row small">
+            <label class="ck">
+              <input type="checkbox" id="rememberMe">
+              <span>Remember me</span>
+            </label>
+            <a href="#" class="link" id="linkForgot">Lupa password?</a>
+          </div>
+
+          <button class="btn btn-primary" type="submit">Login</button>
+
+          <div class="sep">or</div>
+
+          <div class="oauth">
+            <button class="oauth-btn" type="button" id="btnOAuthGoogle" title="Google">G</button>
+            <button class="oauth-btn" type="button" id="btnOAuthGithub" title="GitHub">GH</button>
+          </div>
+
+          <p class="switch-note">
+            Not a member yet?
+            <a href="#" class="link" data-switch="signup">Sign up</a>
+          </p>
+        </form>
+
+        <!-- SIGNUP -->
+        <form id="formSignup" class="pane hidden" data-pane="signup" autocomplete="off">
+          <h2 class="panel-title">Create account</h2>
+
+          <div class="grid-2">
+            <div>
+              <label>First name</label>
+              <div class="input">
+                <input type="text" name="first_name" placeholder="John" />
+              </div>
+            </div>
+            <div>
+              <label>Last name</label>
+              <div class="input">
+                <input type="text" name="last_name" placeholder="Doe" />
+              </div>
+            </div>
+          </div>
+
+          <label>Email address</label>
+          <div class="input">
+            <input type="email" name="email" placeholder="name@mail.com" required />
+          </div>
+
+          <label>Password</label>
+          <div class="input">
+            <input type="password" name="password" placeholder="********" required />
+          </div>
+
+          <label>Confirm password</label>
+          <div class="input">
+            <input type="password" name="password2" placeholder="********" required />
+          </div>
+
+          <button class="btn btn-gradient" type="submit">Sign up</button>
+
+          <p class="switch-note">
+            Already have an account?
+            <a href="#" class="link" data-switch="login">Sign in</a>
+          </p>
+        </form>
+      </main>
+
+    </div>
+  </div>
+
+  <script src="login.js"></script>
+</body>
+</html>
