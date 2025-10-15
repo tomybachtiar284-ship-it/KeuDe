@@ -1,4 +1,4 @@
-/***** KeuLite Pro – Supabase + Semua Fitur + Close(X) + Guards *****/
+/***** KeuLite Pro – Supabase (Shared Workspace) *****/
 (async function(){
   /* ---------- Utils ---------- */
   const $ = (s, r=document)=>r.querySelector(s);
@@ -16,9 +16,8 @@
   const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let currentUser = null;
-  let accountMap = {}; // code -> {id, code, name, type}
 
-  /* ---------- Auth ---------- */
+  /* ---------- Auth (status saja) ---------- */
   async function initAuth(){
     const { data:{ user } } = await supa.auth.getUser();
     currentUser = user || null;
@@ -30,77 +29,39 @@
     });
   }
   function updateAuthUI(){
-    $('#authStatus') && ($('#authStatus').textContent = currentUser ? 'Masuk: '+(currentUser.email||currentUser.id) : 'Belum login');
+    const s = $('#authStatus');
+    if (s) s.textContent = currentUser ? 'Masuk: '+(currentUser.email||currentUser.id) : 'Belum login';
     if($('#btnSignOut')) $('#btnSignOut').style.display = currentUser ? '' : 'none';
-  }
-  async function signIn(){
-    const email = prompt('Masukkan email untuk magic link login/signup:');
-    if(!email) return;
-    const { error } = await supa.auth.signInWithOtp({ email });
-    if(error) return alert('Gagal kirim magic link: '+error.message);
-    alert('Cek email kamu untuk magic link login.');
   }
   async function signOut(){ await supa.auth.signOut(); location.reload(); }
 
-  /* ---------- Chart of Accounts ---------- */
-  const DEFAULT_ACCOUNTS = [
-    { code:'101', name:'Kas', type:'asset' },
-    { code:'401', name:'Pendapatan', type:'revenue' },
-    { code:'501', name:'Beban Operasional', type:'expense' },
-    { code:'510', name:'Beban Pajak', type:'tax' },
-  ];
-  async function ensureAccounts(){
-    if(!currentUser) return;
-    const { data, error } = await supa.from('accounts').select('id,code,name,type').eq('user_id', currentUser.id);
-    if(error) throw error;
-    if(!data || data.length===0){
-      const rows = DEFAULT_ACCOUNTS.map(a=>({ ...a, user_id: currentUser.id }));
-      const { error: e2 } = await supa.from('accounts').insert(rows).select();
-      if(e2) throw e2;
-    }
-    const { data: all } = await supa.from('accounts').select('id,code,name,type').eq('user_id', currentUser.id);
-    accountMap = {}; (all||[]).forEach(a=>accountMap[a.code]=a);
-  }
-  const acc = (code)=>{ const a = accountMap[code]; if(!a) throw new Error('Akun tidak ditemukan: '+code); return a; };
-
-  /* ---------- Transactions ---------- */
-  function labelType(t){ return t==='income'?'Pemasukan':t==='expense'?'Pengeluaran':'Pajak'; }
+  /* ---------- Transactions (tanpa user_id / journal) ---------- */
+  const labelType = t => t==='income' ? 'Pemasukan' : t==='expense' ? 'Pengeluaran' : 'Pajak';
 
   async function addTransaction(tx){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-    const payload = { ...tx, amount: num(tx.amount), user_id: currentUser.id };
+    const payload = { ...tx, amount: num(tx.amount) };
     const { data, error } = await supa.from('transactions').insert(payload).select().single();
     if(error) throw error;
-    await createJournalForTransaction(data);
     return data;
   }
   async function updateTransaction(id, patch){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
     const { data, error } = await supa.from('transactions')
       .update({ ...patch, amount: patch.amount!=null? num(patch.amount): undefined })
-      .eq('id', id).eq('user_id', currentUser.id).select().single();
+      .eq('id', id).select().single();
     if(error) throw error;
-    await deleteJournalByTx(id);
-    await createJournalForTransaction(data);
     return data;
   }
   async function removeTransaction(id){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-    await deleteJournalByTx(id);
-    const { error } = await supa.from('transactions').delete().eq('id', id).eq('user_id', currentUser.id);
+    const { error } = await supa.from('transactions').delete().eq('id', id);
     if(error) throw error;
   }
   async function listTransactions(limit=10){
-    if(!currentUser) return [];
-    const { data, error } = await supa.from('transactions')
-      .select('*').eq('user_id', currentUser.id).order('date',{ascending:false}).limit(limit);
+    const { data, error } = await supa.from('transactions').select('*').order('date',{ascending:false}).limit(limit);
     if(error) throw error; return data||[];
   }
   async function listTransactionsByMonth(ym){
-    if(!currentUser) return [];
     const { data, error } = await supa.from('transactions')
-      .select('*').eq('user_id', currentUser.id)
-      .gte('date', ym+'-01').lte('date', ym+'-31').order('date',{ascending:false});
+      .select('*').gte('date', ym+'-01').lte('date', ym+'-31').order('date',{ascending:false});
     if(error) throw error; return data||[];
   }
   async function sumByType(ym, type){
@@ -108,9 +69,7 @@
     return rows.filter(r=>r.type===type).reduce((a,b)=>a+num(b.amount),0);
   }
   async function cashBalance(untilDate){
-    if(!currentUser) return 0;
-    const { data, error } = await supa.from('transactions').select('type,amount,date')
-      .eq('user_id', currentUser.id).lte('date', untilDate);
+    const { data, error } = await supa.from('transactions').select('type,amount,date').lte('date', untilDate);
     if(error) throw error;
     let inc=0, exp=0, tax=0;
     (data||[]).forEach(t=>{
@@ -121,44 +80,7 @@
     return inc - exp - tax;
   }
 
-  /* ---------- Journal (Double-Entry) ---------- */
-  async function createJournal(entry){
-    const { data, error } = await supa.from('journal_entries').insert(entry).select().single();
-    if(error) throw error; return data;
-  }
-  async function createLines(lines){
-    const { error } = await supa.from('journal_lines').insert(lines);
-    if(error) throw error;
-  }
-  async function deleteJournalByTx(tx_id){
-    if(!currentUser) return;
-    const { data, error } = await supa.from('journal_entries').select('id').eq('user_id', currentUser.id).eq('tx_id', tx_id);
-    if(error) throw error;
-    if(data?.length){
-      const ids = data.map(x=>x.id);
-      await supa.from('journal_entries').delete().in('id', ids).eq('user_id', currentUser.id);
-    }
-  }
-  async function createJournalForTransaction(tx){
-    if(!currentUser) return;
-    const amt = num(tx.amount); if(amt<=0) return;
-    const memo = (tx.type||'').toUpperCase()+' - '+(tx.category||'');
-    const je = await createJournal({ user_id: currentUser.id, tx_id: tx.id, doc_type:'manual', doc_id:null, date: tx.date, memo });
-    const L = [];
-    if(tx.type==='income'){
-      L.push({ user_id: currentUser.id, entry_id: je.id, account_id: acc('101').id, debit: amt, credit:0 });
-      L.push({ user_id: currentUser.id, entry_id: je.id, account_id: acc('401').id, debit: 0, credit: amt });
-    }else if(tx.type==='expense'){
-      L.push({ user_id: currentUser.id, entry_id: je.id, account_id: acc('501').id, debit: amt, credit:0 });
-      L.push({ user_id: currentUser.id, entry_id: je.id, account_id: acc('101').id, debit: 0, credit: amt });
-    }else if(tx.type==='tax'){
-      L.push({ user_id: currentUser.id, entry_id: je.id, account_id: acc('510').id, debit: amt, credit:0 });
-      L.push({ user_id: currentUser.id, entry_id: je.id, account_id: acc('101').id, debit: 0, credit: amt });
-    }
-    await createLines(L);
-  }
-
-  /* ---------- Documents: Receipt / Quotation / Invoice ---------- */
+  /* ---------- Documents (Receipts / Quotation / Invoice) ---------- */
   const computeDocTotal = (items=[], discountPct=0, taxPct=0)=>{
     const sub = items.reduce((a,b)=>a + num(b.qty)*num(b.price),0);
     const disc = sub * (num(discountPct)/100);
@@ -167,18 +89,16 @@
     return Math.max(0, dpp + tax);
   };
 
-  // Receipts
+  /* ===== Receipts ===== */
   function newReceiptNumber(seq){ return 'RC-'+String(seq).padStart(4,'0'); }
   async function nextReceiptNumber(){
-    if(!currentUser) return 'RC-0001';
-    const { data } = await supa.from('receipts').select('id').eq('user_id', currentUser.id);
+    const { data } = await supa.from('receipts').select('id');
     const n = (data?.length||0)+1; return newReceiptNumber(n);
   }
   async function saveReceipt(rc){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-    const base = { ...rc, user_id: currentUser.id, amount: num(rc.amount) };
+    const base = { ...rc, amount: num(rc.amount) };
     if(rc.id){
-      const { data, error } = await supa.from('receipts').update(base).eq('id', rc.id).eq('user_id', currentUser.id).select().single();
+      const { data, error } = await supa.from('receipts').update(base).eq('id', rc.id).select().single();
       if(error) throw error; return data;
     }else{
       const { data, error } = await supa.from('receipts').insert(base).select().single();
@@ -186,97 +106,121 @@
     }
   }
   async function listReceipts(){
-    if(!currentUser) return [];
-    const { data, error } = await supa.from('receipts').select('*').eq('user_id', currentUser.id).order('date',{ascending:false});
+    const { data, error } = await supa.from('receipts').select('*').order('date',{ascending:false});
     if(error) throw error; return data||[];
   }
   async function deleteReceipt(id){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-    const { error } = await supa.from('receipts').delete().eq('id', id).eq('user_id', currentUser.id);
+    const { error } = await supa.from('receipts').delete().eq('id', id);
     if(error) throw error;
   }
 
-  // Quotations
+  /* ===== Quotations (pakai quotation_items) ===== */
   function newQuoteNumber(seq){ return 'QT-'+String(seq).padStart(4,'0'); }
   async function nextQuoteNumber(){
-    if(!currentUser) return 'QT-0001';
-    const { data } = await supa.from('quotations').select('id').eq('user_id', currentUser.id);
+    const { data } = await supa.from('quotations').select('id');
     const n = (data?.length||0)+1; return newQuoteNumber(n);
   }
-  async function saveQuote(qt){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-    const base = { ...qt, user_id: currentUser.id, items: qt.items||[] };
-    if(qt.id){
-      const { data, error } = await supa.from('quotations').update(base).eq('id', qt.id).eq('user_id', currentUser.id).select().single();
-      if(error) throw error; return data;
-    }else{
-      const { data, error } = await supa.from('quotations').insert(base).select().single();
-      if(error) throw error; return data;
-    }
-  }
+
+  // Ambil quotation + items (embedded)
   async function listQuotes(){
-    if(!currentUser) return [];
-    const { data, error } = await supa.from('quotations').select('*').eq('user_id', currentUser.id).order('date',{ascending:false});
-    if(error) throw error; return data||[];
+    const { data, error } = await supa
+      .from('quotations')
+      .select('id,date,number,client,contact,discount_pct,tax_pct,notes, quotation_items(description,qty,price)')
+      .order('date',{ascending:false});
+    if (error) throw error;
+    return (data||[]).map(q=>({
+      ...q,
+      items: (q.quotation_items||[]).map(i=>({desc:i.description, qty:i.qty, price:i.price}))
+    }));
   }
+
+  async function saveQuote(qt){
+    // simpan header
+    let row;
+    const header = {
+      number: qt.number, date: qt.date, client: qt.client, contact: qt.contact,
+      discount_pct: qt.discount_pct ?? qt.discountPct ?? 0,
+      tax_pct: qt.tax_pct ?? qt.taxPct ?? 0, notes: qt.notes||''
+    };
+    if(qt.id){
+      const { data, error } = await supa.from('quotations').update(header).eq('id', qt.id).select().single();
+      if(error) throw error; row = data;
+      await supa.from('quotation_items').delete().eq('quotation_id', row.id);
+    }else{
+      const { data, error } = await supa.from('quotations').insert(header).select().single();
+      if(error) throw error; row = data;
+    }
+    // simpan items
+    const items = (qt.items||[]).map(i=>({
+      quotation_id: row.id, description: i.desc||'', qty: num(i.qty), price: num(i.price)
+    }));
+    if(items.length) {
+      const { error: e2 } = await supa.from('quotation_items').insert(items);
+      if(e2) throw e2;
+    }
+    return row;
+  }
+
   async function deleteQuote(id){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-    const { error } = await supa.from('quotations').delete().eq('id', id).eq('user_id', currentUser.id);
+    await supa.from('quotation_items').delete().eq('quotation_id', id);
+    const { error } = await supa.from('quotations').delete().eq('id', id);
     if(error) throw error;
   }
 
-  // Invoices
+  /* ===== Invoices (pakai invoice_items) ===== */
   function newInvNumber(seq){ return 'INV-'+String(seq).padStart(4,'0'); }
   async function nextInvNumber(){
-    if(!currentUser) return 'INV-0001';
-    const { data } = await supa.from('invoices').select('id').eq('user_id', currentUser.id);
+    const { data } = await supa.from('invoices').select('id');
     const n = (data?.length||0)+1; return newInvNumber(n);
   }
+
+  async function listInvoices(){
+    const { data, error } = await supa
+      .from('invoices')
+      .select('id,date,number,client,status,discount_pct,tax_pct,notes, due_date, invoice_items(description,qty,price)')
+      .order('date',{ascending:false});
+    if (error) throw error;
+    return (data||[]).map(inv=>({
+      ...inv,
+      items: (inv.invoice_items||[]).map(i=>({desc:i.description, qty:i.qty, price:i.price}))
+    }));
+  }
+
   async function saveInvoice(inv){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-    const base = { ...inv, user_id: currentUser.id, items: inv.items||[] };
+    // simpan header
     let row;
+    const header = {
+      number: inv.number, date: inv.date, due_date: inv.due_date || inv.dueDate,
+      client: inv.client, discount_pct: inv.discount_pct ?? inv.discountPct ?? 0,
+      tax_pct: inv.tax_pct ?? inv.taxPct ?? 0, status: inv.status||'Draft', notes: inv.notes||''
+    };
     if(inv.id){
-      const { data, error } = await supa.from('invoices').update(base).eq('id', inv.id).eq('user_id', currentUser.id).select().single();
+      const { data, error } = await supa.from('invoices').update(header).eq('id', inv.id).select().single();
       if(error) throw error; row = data;
+      await supa.from('invoice_items').delete().eq('invoice_id', row.id);
     }else{
-      const { data, error } = await supa.from('invoices').insert(base).select().single();
+      const { data, error } = await supa.from('invoices').insert(header).select().single();
       if(error) throw error; row = data;
     }
-    await ensureInvoicePayment(row);
+    // simpan items
+    const items = (inv.items||[]).map(i=>({
+      invoice_id: row.id, description: i.desc||'', qty: num(i.qty), price: num(i.price)
+    }));
+    if(items.length) {
+      const { error: e2 } = await supa.from('invoice_items').insert(items);
+      if(e2) throw e2;
+    }
     return row;
   }
-  async function listInvoices(){
-    if(!currentUser) return [];
-    const { data, error } = await supa.from('invoices').select('*').eq('user_id', currentUser.id).order('date',{ascending:false});
-    if(error) throw error; return data||[];
-  }
+
   async function deleteInvoice(id){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
-    const { data: inv } = await supa.from('invoices').select('linked_transaction_id').eq('id', id).eq('user_id', currentUser.id).single();
-    if(inv?.linked_transaction_id) await removeTransaction(inv.linked_transaction_id);
-    const { error } = await supa.from('invoices').delete().eq('id', id).eq('user_id', currentUser.id);
+    await supa.from('invoice_items').delete().eq('invoice_id', id);
+    const { error } = await supa.from('invoices').delete().eq('id', id);
     if(error) throw error;
-  }
-  async function ensureInvoicePayment(inv){
-    if(!currentUser) return;
-    const total = computeDocTotal(inv.items, inv.discount_pct ?? inv.discountPct ?? 0, inv.tax_pct ?? inv.taxPct ?? 0);
-    if(inv.status==='Paid' && !inv.linked_transaction_id){
-      const tx = await addTransaction({
-        date: inv.date, type:'income', category:'Pembayaran Invoice',
-        description: (inv.number||'')+' - '+(inv.client||''), amount: total, source:'invoice'
-      });
-      await supa.from('invoices').update({ linked_transaction_id: tx?.id || null }).eq('id', inv.id).eq('user_id', currentUser.id);
-    }
-    if(inv.status!=='Paid' && inv.linked_transaction_id){
-      await removeTransaction(inv.linked_transaction_id);
-      await supa.from('invoices').update({ linked_transaction_id: null }).eq('id', inv.id).eq('user_id', currentUser.id);
-    }
   }
 
   /* ---------- Rendering: Dashboard & Reports ---------- */
   async function renderDashboard(){
-    if(!currentUser) return;
     const m = $('#dashMonth').value || thisMonth();
     const [inc, exp, tax, cash, recents] = await Promise.all([
       sumByType(m,'income'), sumByType(m,'expense'), sumByType(m,'tax'),
@@ -406,7 +350,6 @@
       <p>Keterangan: ${esc(r.notes||'-')}</p>
       <br><br>
       <p style="text-align:right">Disetujui oleh, <br> Diruktur Utama PT DKE</p>`;
-      
     window.print();
   }
   async function renderReceipts(){ renderReceiptsTable(await listReceipts()); }
@@ -538,20 +481,20 @@
   }
   async function renderInvoices(){ renderInvoicesTable(await listInvoices()); }
 
-  /* ---------- Export / Import JSON ---------- */
+  /* ---------- Export / Import JSON (4 tabel saja) ---------- */
   async function doExport(){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
     const [tx, rc, qt, iv] = await Promise.all([
-      supa.from('transactions').select('*').eq('user_id', currentUser.id),
-      supa.from('receipts').select('*').eq('user_id', currentUser.id),
-      supa.from('quotations').select('*').eq('user_id', currentUser.id),
-      supa.from('invoices').select('*').eq('user_id', currentUser.id),
+      supa.from('transactions').select('*'),
+      supa.from('receipts').select('*'),
+      supa.from('quotations').select('*, quotation_items(*)'),
+      supa.from('invoices').select('*, invoice_items(*)'),
     ]);
+    // Bentuk data seragam
     const data = {
       transactions: tx.data||[],
       receipts: rc.data||[],
-      quotations: qt.data||[],
-      invoices: iv.data||[],
+      quotations: (qt.data||[]).map(q=>({...q, quotation_items: q.quotation_items||[]})),
+      invoices: (iv.data||[]).map(v=>({...v, invoice_items: v.invoice_items||[]})),
     };
     const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -560,25 +503,42 @@
     a.click(); URL.revokeObjectURL(a.href);
   }
   async function doImport(file){
-    if(!currentUser){ alert('Silakan login terlebih dahulu.'); return; }
     const text = await file.text();
     const data = JSON.parse(text||'{}');
     if(!data) return;
-    if(!confirm('Import akan menimpa data Anda (transactions/receipts/quotations/invoices). Lanjutkan?')) return;
-    await supa.from('journal_entries').delete().eq('user_id', currentUser.id);
+    if(!confirm('Import akan menimpa data yang ada (transactions/receipts/quotations/invoices). Lanjutkan?')) return;
+
+    // bersihkan
+    await supa.from('invoice_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supa.from('quotation_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     await Promise.all([
-      supa.from('transactions').delete().eq('user_id', currentUser.id),
-      supa.from('receipts').delete().eq('user_id', currentUser.id),
-      supa.from('quotations').delete().eq('user_id', currentUser.id),
-      supa.from('invoices').delete().eq('user_id', currentUser.id),
+      supa.from('transactions').delete().neq('id','00000000-0000-0000-0000-000000000000'),
+      supa.from('receipts').delete().neq('id','00000000-0000-0000-0000-000000000000'),
+      supa.from('quotations').delete().neq('id','00000000-0000-0000-0000-000000000000'),
+      supa.from('invoices').delete().neq('id','00000000-0000-0000-0000-000000000000'),
     ]);
-    const ins = async (table, rows)=>{ if(rows?.length) await supa.from(table).insert(rows.map(r=>({ ...r, user_id: currentUser.id }))); };
-    await ins('transactions', data.transactions||[]);
-    await ins('receipts', data.receipts||[]);
-    await ins('quotations', data.quotations||[]);
-    await ins('invoices', data.invoices||[]);
-    const { data: allTx } = await supa.from('transactions').select('*').eq('user_id', currentUser.id);
-    for(const t of (allTx||[])) await createJournalForTransaction(t);
+
+    // isi lagi
+    if(data.transactions?.length) await supa.from('transactions').insert(data.transactions);
+    if(data.receipts?.length) await supa.from('receipts').insert(data.receipts);
+    if(data.quotations?.length){
+      const headers = data.quotations.map(({quotation_items, ...h})=>h);
+      const { data: qs } = await supa.from('quotations').insert(headers).select('id,number');
+      for (let i=0;i<data.quotations.length;i++){
+        const id = qs[i].id;
+        const items = (data.quotations[i].quotation_items||[]).map(it=>({quotation_id:id, description:it.description, qty:it.qty, price:it.price}));
+        if(items.length) await supa.from('quotation_items').insert(items);
+      }
+    }
+    if(data.invoices?.length){
+      const headers = data.invoices.map(({invoice_items, ...h})=>h);
+      const { data: ivs } = await supa.from('invoices').insert(headers).select('id,number');
+      for (let i=0;i<data.invoices.length;i++){
+        const id = ivs[i].id;
+        const items = (data.invoices[i].invoice_items||[]).map(it=>({invoice_id:id, description:it.description, qty:it.qty, price:it.price}));
+        if(items.length) await supa.from('invoice_items').insert(items);
+      }
+    }
     alert('Import selesai.');
     const view = $('.nav-link.active')?.dataset.view || 'dashboard';
     setView(view);
@@ -586,13 +546,10 @@
 
   /* ---------- Navigation & Buttons ---------- */
   function setYear(){ $('#year') && ($('#year').textContent = new Date().getFullYear()); }
-
-  // Track riwayat view untuk tombol × kembali
   let currentView = 'dashboard';
   let lastView = 'dashboard';
 
   function setView(view){
-    // simpan view sebelumnya
     const active = document.querySelector('.nav-link.active')?.dataset.view || currentView;
     lastView = active || lastView;
 
@@ -634,7 +591,6 @@
     $('#txTitle').textContent='Tambah Transaksi';
     f.reset(); f.date.value=today(); f.type.value=type||'income';
 
-    // inject tombol X di dialog (idempotent)
     if(!f.querySelector('.close-x')){
       const x=document.createElement('button');
       x.type='button';
@@ -651,14 +607,14 @@
     $('#btnTxSave').onclick = async (e)=>{
       e.preventDefault();
       const fd=new FormData(f);
-      await addTransaction({
-        date: fd.get('date'),
-        type: fd.get('type'),
-        category: fd.get('category'),
-        description: fd.get('description'),
-        amount: fd.get('amount'),
-        source:'manual'
-      });
+    await addTransaction({
+      date: fd.get('date'),
+      type: fd.get('type'),
+      category: fd.get('category'),
+      description: fd.get('description'),
+      amount: fd.get('amount')
+    });
+
       dlg.close(); renderDashboard();
     };
   }
@@ -668,7 +624,7 @@
       if(del){ if(confirm('Hapus transaksi ini?')){ await removeTransaction(del.dataset.delTx); renderDashboard(); } }
       if(ed){
         const id=ed.dataset.editTx;
-        const { data } = await supa.from('transactions').select('*').eq('id', id).eq('user_id', currentUser.id).single();
+        const { data } = await supa.from('transactions').select('*').eq('id', id).single();
         const dlg=$('#txDialog'), f=$('#formTx'); if(!dlg||!f) return;
         $('#txTitle').textContent='Edit Transaksi';
         f.date.value=data.date; f.type.value=data.type; f.category.value=data.category||''; f.description.value=data.description||''; f.amount.value=data.amount;
@@ -699,7 +655,7 @@
     });
   }
 
-  /* ---------- Tambah tombol × (kembali) di panel header ---------- */
+  /* ---------- Tombol × (kembali) di panel header ---------- */
   function injectCloseButtonsForPanels(){
     const views = [
       'receipt','quotation','invoice',
@@ -733,12 +689,11 @@
     $('#btnReceiptPrint')?.addEventListener('click', async ()=>{
       const id = $('#formReceipt')?.dataset.id;
       if(!id) return alert('Simpan dulu sebelum cetak.');
-      const { data: r } = await supa.from('receipts').select('*').eq('id', id).eq('user_id', currentUser.id).single();
+      const { data: r } = await supa.from('receipts').select('*').eq('id', id).single();
       if(r) printReceipt(r); else alert('Kwitansi tidak ditemukan.');
     });
     $('#formReceipt')?.addEventListener('submit', async e=>{
       e.preventDefault();
-      if(!currentUser) return alert('Silakan login terlebih dahulu.');
       const f = e.currentTarget; const fd = new FormData(f);
       const rc = {
         id: f.dataset.id || undefined,
@@ -757,8 +712,8 @@
     });
     $('#view-receipt')?.addEventListener('click', async e=>{
       const ed = e.target.closest('[data-edit-rc]'); const del = e.target.closest('[data-del-rc]'); const pr = e.target.closest('[data-print-rc]');
-      if(ed){ const { data:r } = await supa.from('receipts').select('*').eq('id', ed.dataset.editRc).eq('user_id', currentUser.id).single(); loadReceiptToForm(r); }
-      if(pr){ const { data:r } = await supa.from('receipts').select('*').eq('id', pr.dataset.printRc).eq('user_id', currentUser.id).single(); if(r) printReceipt(r); }
+      if(ed){ const { data:r } = await supa.from('receipts').select('*').eq('id', ed.dataset.editRc).single(); loadReceiptToForm(r); }
+      if(pr){ const { data:r } = await supa.from('receipts').select('*').eq('id', pr.dataset.printRc).single(); if(r) printReceipt(r); }
       if(del){ if(confirm('Hapus kwitansi?')){ await deleteReceipt(del.dataset.delRc); renderReceipts(); } }
     });
   }
@@ -772,7 +727,6 @@
     $('#formQuote')?.addEventListener('input', ()=>calcItemsTotal('#quoteItems'));
     $('#formQuote')?.addEventListener('submit', async e=>{
       e.preventDefault();
-      if(!currentUser) return alert('Silakan login terlebih dahulu.');
       const f = e.currentTarget; const fd = new FormData(f);
       const items = $$('#quoteItems .item-row').map(r=>({
         desc: $('.it-desc',r).value, qty: num($('.it-qty',r).value), price: num($('.it-price',r).value)
@@ -794,13 +748,35 @@
     });
     $('#btnQuotePrint')?.addEventListener('click', async ()=>{
       const id = $('#formQuote')?.dataset.id; if(!id) return alert('Simpan dulu sebelum cetak.');
-      const { data:q } = await supa.from('quotations').select('*').eq('id', id).eq('user_id', currentUser.id).single();
+      // ambil bersama items
+      const { data } = await supa.from('quotations')
+        .select('*, quotation_items(description,qty,price)').eq('id', id).single();
+      const q = data ? {
+        ...data,
+        items: (data.quotation_items||[]).map(i=>({desc:i.description, qty:i.qty, price:i.price}))
+      } : null;
       if(q) printQuote(q);
     });
     $('#view-quotation')?.addEventListener('click', async e=>{
       const ed=e.target.closest('[data-edit-qt]'); const del=e.target.closest('[data-del-qt]'); const pr=e.target.closest('[data-print-qt]');
-      if(ed){ const { data:q } = await supa.from('quotations').select('*').eq('id', ed.dataset.editQt).eq('user_id', currentUser.id).single(); loadQuoteToForm(q); }
-      if(pr){ const { data:q } = await supa.from('quotations').select('*').eq('id', pr.dataset.printQt).eq('user_id', currentUser.id).single(); if(q) printQuote(q); }
+      if(ed){
+        const { data } = await supa.from('quotations')
+          .select('*, quotation_items(description,qty,price)').eq('id', ed.dataset.editQt).single();
+        const q = data ? {
+          ...data,
+          items: (data.quotation_items||[]).map(i=>({desc:i.description, qty:i.qty, price:i.price}))
+        } : null;
+        if(q) loadQuoteToForm(q);
+      }
+      if(pr){
+        const { data } = await supa.from('quotations')
+          .select('*, quotation_items(description,qty,price)').eq('id', pr.dataset.printQt).single();
+        const q = data ? {
+          ...data,
+          items: (data.quotation_items||[]).map(i=>({desc:i.description, qty:i.qty, price:i.price}))
+        } : null;
+        if(q) printQuote(q);
+      }
       if(del){ if(confirm('Hapus penawaran?')){ await deleteQuote(del.dataset.delQt); renderQuotes(); } }
     });
   }
@@ -814,7 +790,6 @@
     $('#formInv')?.addEventListener('input', ()=>calcItemsTotal('#invItems'));
     $('#formInv')?.addEventListener('submit', async e=>{
       e.preventDefault();
-      if(!currentUser) return alert('Silakan login terlebih dahulu.');
       const f = e.currentTarget; const fd = new FormData(f);
       const items = $$('#invItems .item-row').map(r=>({
         desc: $('.it-desc',r).value, qty: num($('.it-qty',r).value), price: num($('.it-price',r).value)
@@ -838,13 +813,34 @@
     });
     $('#btnInvPrint')?.addEventListener('click', async ()=>{
       const id = $('#formInv')?.dataset.id; if(!id) return alert('Simpan dulu sebelum cetak.');
-      const { data: inv } = await supa.from('invoices').select('*').eq('id', id).eq('user_id', currentUser.id).single();
+      const { data } = await supa.from('invoices')
+        .select('*, invoice_items(description,qty,price)').eq('id', id).single();
+      const inv = data ? {
+        ...data,
+        items: (data.invoice_items||[]).map(i=>({desc:i.description, qty:i.qty, price:i.price}))
+      } : null;
       if(inv) printInv(inv);
     });
     $('#view-invoice')?.addEventListener('click', async e=>{
       const ed=e.target.closest('[data-edit-inv]'); const del=e.target.closest('[data-del-inv]'); const pr=e.target.closest('[data-print-inv]');
-      if(ed){ const { data:inv } = await supa.from('invoices').select('*').eq('id', ed.dataset.editInv).eq('user_id', currentUser.id).single(); loadInvToForm(inv); }
-      if(pr){ const { data:inv } = await supa.from('invoices').select('*').eq('id', pr.dataset.printInv).eq('user_id', currentUser.id).single(); if(inv) printInv(inv); }
+      if(ed){
+        const { data } = await supa.from('invoices')
+          .select('*, invoice_items(description,qty,price)').eq('id', ed.dataset.editInv).single();
+        const inv = data ? {
+          ...data,
+          items: (data.invoice_items||[]).map(i=>({desc:i.description, qty:i.qty, price:i.price}))
+        } : null;
+        if(inv) loadInvToForm(inv);
+      }
+      if(pr){
+        const { data } = await supa.from('invoices')
+          .select('*, invoice_items(description,qty,price)').eq('id', pr.dataset.printInv).single();
+        const inv = data ? {
+          ...data,
+          items: (data.invoice_items||[]).map(i=>({desc:i.description, qty:i.qty, price:i.price}))
+        } : null;
+        if(inv) printInv(inv);
+      }
       if(del){
         if(confirm('Hapus invoice?')){ await deleteInvoice(del.dataset.delInv); renderInvoices(); }
       }
@@ -862,17 +858,14 @@
 
   /* ---------- Realtime ---------- */
   function initRealtime(){
-    if(!currentUser) return;
     supa.channel('rt-transactions')
-      .on('postgres_changes', { event:'*', schema:'public', table:'transactions', filter:`user_id=eq.${currentUser.id}` },
+      .on('postgres_changes', { event:'*', schema:'public', table:'transactions' },
         ()=> renderDashboard())
       .subscribe();
   }
 
   /* ---------- Init ---------- */
   async function bootAfterLogin(){
-    await ensureAccounts();
-    // set default filters
     $('#dashMonth') && ($('#dashMonth').value=thisMonth());
     $('#riMonth') && ($('#riMonth').value=thisMonth());
     $('#reMonth') && ($('#reMonth').value=thisMonth());
@@ -884,10 +877,9 @@
     setView('dashboard');
     renderDashboard();
     initRealtime();
-    injectCloseButtonsForPanels(); // pastikan tombol × ada di semua panel
+    injectCloseButtonsForPanels();
   }
   function bindAuthButtons(){
-    $('#btnSignIn')?.addEventListener('click', signIn);
     $('#btnSignOut')?.addEventListener('click', signOut);
   }
   function bindReports(){
@@ -898,7 +890,6 @@
     $('#btnCfRun')?.addEventListener('click', runCashFlow);
     $('#btnBsRun')?.addEventListener('click', runBalanceSheet);
 
-    // Print per section (gunakan CSS @media print)
     $('#btnRiPrint')?.addEventListener('click', ()=>window.print());
     $('#btnRePrint')?.addEventListener('click', ()=>window.print());
     $('#btnRtPrint')?.addEventListener('click', ()=>window.print());
@@ -906,7 +897,6 @@
     $('#btnCfPrint')?.addEventListener('click', ()=>window.print());
     $('#btnBsPrint')?.addEventListener('click', ()=>window.print());
 
-    // Export CSV sederhana (client-side)
     const exportCSV = (rows, headers)=>{
       const csv = [headers.join(',')].concat(rows.map(r=>headers.map(h=>JSON.stringify(r[h]??'')).join(','))).join('\n');
       const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
@@ -931,8 +921,8 @@
     bindNav(); bindTopbar(); bindDashTable();
     bindReceipt(); bindQuote(); bindInvoice(); bindSettings(); bindReports();
     bindAuthButtons();
-    injectCloseButtonsForPanels(); // awal
-    initAuth(); // will call bootAfterLogin on state change
+    injectCloseButtonsForPanels();
+    initAuth();
   }
   document.addEventListener('DOMContentLoaded', init);
 })();

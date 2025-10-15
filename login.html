@@ -45,12 +45,12 @@
 
           <label>Email address</label>
           <div class="input">
-            <input type="email" name="email" placeholder="name@mail.com" required />
+            <input id="loginEmail" type="email" name="email" placeholder="name@mail.com" required />
           </div>
 
           <label>Password</label>
           <div class="input">
-            <input type="password" name="password" placeholder="********" required />
+            <input id="loginPassword" type="password" name="password" placeholder="********" required />
           </div>
 
           <div class="row small">
@@ -97,17 +97,17 @@
 
           <label>Email address</label>
           <div class="input">
-            <input type="email" name="email" placeholder="name@mail.com" required />
+            <input id="suEmail" type="email" name="email" placeholder="name@mail.com" required />
           </div>
 
           <label>Password</label>
           <div class="input">
-            <input type="password" name="password" placeholder="********" required />
+            <input id="suPass" type="password" name="password" placeholder="********" required />
           </div>
 
           <label>Confirm password</label>
           <div class="input">
-            <input type="password" name="password2" placeholder="********" required />
+            <input id="suPass2" type="password" name="password2" placeholder="********" required />
           </div>
 
           <button class="btn btn-gradient" type="submit">Sign up</button>
@@ -122,6 +122,113 @@
     </div>
   </div>
 
-  <script src="login.js"></script>
+  <!-- ====== APP LOGIC ====== -->
+  <script>
+    // =================== KONFIGURASI SUPABASE ===================
+    const SUPABASE_URL = 'https://jllomycpshgbhppipyaj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsbG9teWNwc2hnYmhwcGlweWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyNzg2OTcsImV4cCI6MjA3NTg1NDY5N30.DQYcB25G6blGpQnxyLlaqsX8OTXWMc7q51EtJN35vY4';
+    const EMAIL_REDIRECT = 'https://tbmanjaddawajadda.pro/verify.html'; // halaman verifikasi kamu
+
+    // Catatan: rememberMe tidak mengubah persistensi client (Supabase v2 mem-persist session di localStorage).
+    // Kalau ingin "non-remember", biasanya pakai client terpisah dengan persistSession:false.
+    // Untuk kesederhanaan kita tetap pakai default (persisted). Checkbox tetap ada untuk UI.
+    const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Jika sudah login & verified → langsung ke app
+    (async () => {
+      const { data: { user } } = await supa.auth.getUser();
+      if (user?.email_confirmed_at) {
+        location.replace('index.html');
+      }
+    })();
+
+    // =================== SWITCH PANE (Login <-> Signup) ===================
+    document.querySelectorAll('[data-switch]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = a.getAttribute('data-switch');
+        document.querySelectorAll('.pane').forEach(p => p.classList.add('hidden'));
+        document.querySelector(`.pane[data-pane="${target}"]`)?.classList.remove('hidden');
+      });
+    });
+
+    // =================== LOGIN ===================
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      if (!email || !password) return alert('Lengkapi email & password');
+
+      const { error } = await supa.auth.signInWithPassword({ email, password });
+      if (error) return alert(error.message);
+
+      const { data: { user } } = await supa.auth.getUser();
+      if (!user?.email_confirmed_at) {
+        // Belum verifikasi
+        return location.replace('verify.html');
+      }
+      location.replace('index.html');
+    });
+
+    // =================== FORGOT PASSWORD ===================
+    // Mengirim email reset password (user akan dapat link untuk set password baru)
+    document.getElementById('linkForgot').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      if (!email) return alert('Masukkan email terlebih dahulu di kolom login.');
+
+      const { error } = await supa.auth.resetPasswordForEmail(email, {
+        redirectTo: EMAIL_REDIRECT
+      });
+      if (error) alert(error.message);
+      else alert('Link reset password dikirim. Cek email kamu.');
+    });
+
+    // =================== SIGNUP ===================
+    document.getElementById('formSignup').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('suEmail').value.trim();
+      const pass1 = document.getElementById('suPass').value;
+      const pass2 = document.getElementById('suPass2').value;
+
+      if (!email || !pass1) return alert('Lengkapi email & password');
+      if (pass1 !== pass2) return alert('Konfirmasi password tidak sama');
+
+      const { error } = await supa.auth.signUp({
+        email,
+        password: pass1,
+        options: {
+          data: {
+            first_name: (e.target.first_name?.value || '').trim(),
+            last_name: (e.target.last_name?.value || '').trim()
+          },
+          emailRedirectTo: EMAIL_REDIRECT
+        }
+      });
+
+      if (error) return alert(error.message);
+      alert('Berhasil daftar. Silakan cek email untuk konfirmasi.');
+      location.replace('verify.html');
+    });
+
+    // =================== OAUTH (Google / GitHub) ===================
+    document.getElementById('btnOAuthGoogle').addEventListener('click', async () => {
+      const { error } = await supa.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: EMAIL_REDIRECT }
+      });
+      if (error) alert(error.message);
+      // akan redirect ke Google; setelah sukses ke verify.html
+    });
+
+    document.getElementById('btnOAuthGithub').addEventListener('click', async () => {
+      const { error } = await supa.auth.signInWithOAuth({
+        provider: 'github',
+        options: { redirectTo: EMAIL_REDIRECT }
+      });
+      if (error) alert(error.message);
+    });
+  </script>
 </body>
 </html>
