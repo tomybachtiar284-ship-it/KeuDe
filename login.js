@@ -5,9 +5,10 @@ const SUPABASE_ANON_KEY =
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ====================================
 
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-const goApp = () => (location.href = 'index.html');
+const $  = (s, r=document)=>r.querySelector(s);
+const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+const goApp   = () => location.href = 'index.html';
+const goLogin = () => location.href = 'login.html';
 
 function switchPane(name){
   $$('.pane').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== name));
@@ -22,12 +23,16 @@ function initRemember(){
 /* Cek sesi: bila sudah login, langsung ke app */
 async function checkSession(){
   try{
-    const { data:{ user } } = await supa.auth.getUser();
-    if(user) goApp();
+    const { data:{ session } } = await supa.auth.getSession();
+    if(session) goApp();
   }catch{}
+  // Auto-redirect juga saat status auth berubah
+  supa.auth.onAuthStateChange((_e, session)=>{
+    if(session) goApp();
+  });
 }
 
-/* Login */
+/* Login (email + password) */
 function bindLogin(){
   $('#formLogin')?.addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -45,7 +50,7 @@ function bindLogin(){
   });
 }
 
-/* Sign up */
+/* Sign up → kirim verifikasi ke callback.html (hindari 404) */
 function bindSignup(){
   $('#formSignup')?.addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -60,11 +65,12 @@ function bindSignup(){
         email, password,
         options:{
           data:{ first_name: fd.get('first_name'), last_name: fd.get('last_name') },
-          emailRedirectTo: location.origin + '/login.html'
+          // <<< PENTING: arahkan ke callback.html >>>
+          emailRedirectTo: `${location.origin}/callback.html`
         }
       });
       if(error) throw error;
-      alert('Sign up berhasil. Cek email jika verifikasi diaktifkan.');
+      alert('Sign up berhasil. Cek email kamu untuk verifikasi.');
       switchPane('login');
     }catch(err){
       alert('Sign up gagal: ' + err.message);
@@ -72,7 +78,7 @@ function bindSignup(){
   });
 }
 
-/* Forgot password */
+/* Forgot password → juga pakai callback.html */
 function bindForgot(){
   $('#linkForgot')?.addEventListener('click', async (e)=>{
     e.preventDefault();
@@ -80,7 +86,7 @@ function bindForgot(){
     if(!email) return;
     try{
       const { error } = await supa.auth.resetPasswordForEmail(email, {
-        redirectTo: location.origin + '/login.html'
+        redirectTo: `${location.origin}/callback.html`
       });
       if(error) throw error;
       alert('Link reset password telah dikirim ke email.');
@@ -90,18 +96,18 @@ function bindForgot(){
   });
 }
 
-/* OAuth */
+/* OAuth → redirect ke callback.html biar tidak 404 */
 function bindOAuth(){
   $('#btnOAuthGoogle')?.addEventListener('click', ()=>{
     supa.auth.signInWithOAuth({
       provider:'google',
-      options:{ redirectTo: location.origin + '/index.html' }
+      options:{ redirectTo: `${location.origin}/callback.html` }
     });
   });
   $('#btnOAuthGithub')?.addEventListener('click', ()=>{
     supa.auth.signInWithOAuth({
       provider:'github',
-      options:{ redirectTo: location.origin + '/index.html' }
+      options:{ redirectTo: `${location.origin}/callback.html` }
     });
   });
 }
