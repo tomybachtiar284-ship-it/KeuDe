@@ -417,7 +417,7 @@
         <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Harga</th><th class="num">Subtotal</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <p>Diskon: ${q.discount_pct||0}% &nbsp; | &nbsp; Pajak: ${q.tax_pct||0}%</p>
+      <p>Diskon: ${q.discount_pct||0}% &nbsp; | &nbsp; PPN: ${q.tax_pct||0}%</p>
       <h3 style="text-align:right">Total: ${rupiah(total)}</h3>
       <p>Catatan: ${esc(q.notes||'-')}</p>`;
     window.print();
@@ -474,7 +474,7 @@
         <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Harga</th><th class="num">Subtotal</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <p>Diskon: ${inv.discount_pct||0}% &nbsp; | &nbsp; Pajak: ${inv.tax_pct||0}%</p>
+      <p>Diskon: ${inv.discount_pct||0}% &nbsp; | &nbsp; PPN: ${inv.tax_pct||0}%</p>
       <h3 style="text-align:right">Total: ${rupiah(total)}</h3>
       <p>Catatan: ${esc(inv.notes||'-')}</p>`;
     window.print();

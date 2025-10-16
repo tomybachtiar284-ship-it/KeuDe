@@ -1,6 +1,6 @@
 :root{
   --bg:#0b1020; --panel:#121938; --muted:#8aa0ff;
-  --text:#e9edff; --soft:#1a234a; --line:#273160;
+  --text:#f0f1f6; --soft:#1a234a; --line:#273160;
   --primary:#4f7cff; --danger:#ff5f7a; --warn:#ffb454;
   --ok:#39d98a;
   --radius:14px;
@@ -11,7 +11,7 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+  margin:5; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
   background:linear-gradient(160deg,#0b1020 0%,#101a36 60%,#0f1730 100%);
   color:var(--text);
 }
@@ -19,7 +19,7 @@ body{
 
 /* ===== Sidebar & Layout (Desktop default) ===== */
 .sidebar{
-  width:280px; background:linear-gradient(180deg,#0e1533,#0a1026);
+  width:290px; background:linear-gradient(180deg,#0e1533,#0a1026);
   border-right:1px solid var(--line); padding:18px; position:sticky; top:0; height:100vh;
   display:flex; flex-direction:column; gap:14px;
 }
@@ -122,29 +122,20 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 
 /* ===================== PRINT RULES (GLOBAL) ===================== */
 @page { margin: 12mm; }
-@media print{
-  .sidebar,.topbar,
-  .panel-header .btn,
-  .actions .btn,
-  .btn,
-  .no-print,
-  .close-x { display:none !important; }
+@media print {
+  /* Sembunyikan SEMUA panel di tiga view dokumen */
+  #view-receipt .panel,
+  #view-quotation .panel,
+  #view-invoice .panel {
+    display: none !important;
+  }
 
-  .panel:has(form) { display:none !important; }
-
-  #view-receipt   .panel:first-of-type,
-  #view-quotation .panel:first-of-type,
-  #view-invoice   .panel:first-of-type { display:none !important; }
-
-  table.has-actions th:last-child,
-  table.has-actions td:last-child { display:none !important; }
-
-  body{background:#fff; color:#000}
-  .main  { width:100% !important; margin:0 !important; padding:0 6mm !important; }
-  .view  { padding:0 !important; margin:0 !important; }
-  .panel { border:none; box-shadow:none; margin:0 0 8mm !important; }
-
-  .print-area{display:block !important; page-break-inside:avoid; margin-top:4mm;}
+  /* Tapi pastikan area cetak tetap muncul */
+  #printAreaReceipt,
+  #printAreaQuote,
+  #printAreaInv {
+    display: block !important;
+  }print-area{display:block !important; page-break-inside:avoid; margin-top:4mm;}
 }
 
 /* ====== Responsive (Desktop → Tablet) ====== */
@@ -317,3 +308,166 @@ main > .topbar::before,
   filter: invert(0.85) brightness(1.1);
   opacity:.9;
 }
+/* === Sidebar: netral gelap (bukan biru) === */
+.sidebar{
+  background:#f9fbfb;   /* latar sidebar */
+  color:#100305;         /* warna teks */
+}
+.sidebar .brand{ color:#f20606; }
+
+.sidebar .menu .nav-link{
+  background:transparent;
+  color:#043342;         /* teks menu */
+  border:0;
+}
+.sidebar .menu .nav-link:hover{
+  background:#0ac9de;    /* hover item */
+  color:#ffffff;
+}
+.sidebar .menu .nav-link.active{
+  background:#212631;    /* item aktif */
+  color:#ffffff;
+  border:1px solid #2e3441;
+}
+
+.sidebar-footer{
+  border-top:1px solid #2e3441;
+  color:#131211;
+}
+/* === Sidebar: tebalkan & perbesar teks === */
+.sidebar .brand{
+  font-weight: 900;      /* judul/brand lebih tebal */
+  font-size: 42px;       /* perbesar judul */
+}
+
+.sidebar .menu .nav-link{
+  font-weight: 900;      /* BOLD item menu */
+  font-size: 15px;     /* perbesar teks menu */
+  line-height: 1.3;
+}
+
+.sidebar .menu .nav-link.active{
+  font-weight: 800;      /* item aktif ekstra tebal */
+}
+
+.sidebar .menu-sep{
+  font-weight: 700;      /* header section (LAPORAN, DOKUMEN, dst) */
+  font-size: 20px;
+  letter-spacing: .08em;
+}
+
+/* Supaya tetap rapi di mobile */
+@media (max-width: 768px){
+  .sidebar .brand{ font-size: 20px; }
+  .sidebar .menu .nav-link{ font-size: 14.5px; }
+}
+/* ==== Perbaiki tombol + Item di Quotation & Invoice ==== */
+.items > button#btnQuoteAddItem,
+.items > button#btnInvAddItem {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+
+  /* warna kontras di tema gelap */
+  background: #3b82f6;          /* biru – silakan ganti */
+  color: #fff !important;        /* pastikan teks terlihat */
+  border: 1px solid #2563eb;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+
+.items > button#btnQuoteAddItem:hover,
+.items > button#btnInvAddItem:hover {
+  filter: brightness(1.05);
+}
+
+/* Biar baris item juga lebih “kelihatan” di tema gelap (opsional) */
+.item-row{
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(148,163,184,.25);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.items-header{
+  color: #e2e8f0;
+  font-weight: 600;
+}
+/* =========================== PRINT — FINAL PRO ============================ */
+:root{
+  --ink:#000; --ink-2:#222; --ink-3:#555;
+  --line-ink:#000; --fill-10:#f2f2f2;
+}
+@page { size: A4; margin: 12mm; }
+
+@media print {
+  /* Sembunyikan UI */
+  .topbar, .sidebar, .sidebar-footer, .cards, .actions, .row-actions,
+  .btn, dialog, .tx-form, .no-print,
+  #view-receipt .panel, #view-quotation .panel, #view-invoice .panel { display:none !important; }
+
+  /* Tampilkan area cetak */
+  #printAreaReceipt, #printAreaQuote, #printAreaInv, .print-area { display:block !important; }
+
+  /* Kontras penuh */
+  html,body{ background:#fff !important; }
+  *{ color:#000 !important; text-shadow:none !important; box-shadow:none !important;
+     filter:none !important; opacity:1 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  a[href]:after{ content:"" !important; }
+
+  /* Kanvas */
+  .doc-wrap{ max-width:180mm; margin:0 auto; font-size:11pt; line-height:1.35; }
+  .doc-title{ text-align:center; font-size:16pt; font-weight:800; letter-spacing:.02em; margin:0 0 10pt 0; color:var(--ink-2) !important; }
+  .doc-header{ display:grid; gap:8pt; grid-template-columns:1fr auto; align-items:flex-start; margin-bottom:10pt; }
+  .doc-header .brand{ font-weight:800; font-size:12pt; color:var(--ink-2) !important; }
+  .doc-header .muted{ color:var(--ink-3) !important; font-size:10pt; }
+
+  /* Tabel meta */
+  .meta-table{ width:100%; border-collapse:collapse; table-layout:fixed; margin:0 0 10pt 0; }
+  .meta-table th,.meta-table td{ border:0.6pt solid var(--line-ink); padding:6pt 8pt; vertical-align:top; }
+  .meta-table th{ width:32%; text-align:left; font-weight:700; background:#fff; color:var(--ink-2) !important; }
+
+  /* Tabel item */
+  .doc-table{ width:100%; border-collapse:collapse; margin:0 0 10pt 0; }
+  .doc-table thead th{ font-weight:800; text-transform:uppercase; background:var(--fill-10); }
+  .doc-table th,.doc-table td{ border:0.6pt solid var(--line-ink) !important; padding:6pt 8pt !important; }
+  .doc-table .num,.doc-table td.text-right{ text-align:right; }
+
+  /* Totals kanan */
+  .totals{ margin-left:auto; width:min(80mm,70%); border-collapse:collapse; }
+  .totals th,.totals td{ border:0.6pt solid var(--line-ink); padding:6pt 8pt; }
+  .totals th{ text-align:left; width:60%; }
+  .totals tr:last-child th,.totals tr:last-child td{ font-weight:800; font-size:12pt; }
+
+  /* Catatan & tanda tangan */
+  .note{ margin-top:6pt; font-size:10pt; }
+  .sign-row{ display:flex; gap:12mm; justify-content:flex-end; margin-top:16mm; }
+  .sign-box{ width:60mm; text-align:center; border:0.6pt solid var(--line-ink); padding:10mm 6mm 6mm; border-radius:2pt; }
+  .sign-name{ margin-top:18mm; font-weight:700; text-decoration:underline; }
+  .sign-role{ margin-top:2mm; }
+
+  /* ====== KHUSUS KWITANSI (gbr 1) ====== */
+  #printAreaReceipt .doc-header{ grid-template-columns:1fr 60mm; }
+  .amount-words{ border:0.6pt dashed var(--line-ink); border-radius:12pt; padding:6pt 10pt; display:inline-block; font-weight:700; margin:4pt 0 10pt; }
+  .kw-items .col-no{ width:16mm; text-align:center; }
+  .kw-items .col-desc{ width:auto; }
+  .kw-items .col-amt{ width:38mm; text-align:right; }
+  .kw-bottom{ display:grid; grid-template-columns:1fr 60mm; gap:10pt; margin-top:8pt; align-items:start; }
+  .kw-info td,.kw-info th{ border:0; padding:2pt 0; }
+  .kw-total-box{ border:0.6pt solid var(--line-ink); padding:6pt 8pt; text-align:right; font-weight:800; }
+  .kw-attn{ border:0.6pt solid var(--line-ink); min-height:26mm; padding:6pt 8pt; }
+
+  /* ====== KHUSUS INVOICE (gbr 2) ====== */
+  #printAreaInv .doc-header{ grid-template-columns:1fr 68mm; }
+  #printAreaInv .summary-mini{ border:0.6pt solid var(--line-ink); padding:6pt 8pt; }
+  #printAreaInv .summary-mini .row{ display:flex; justify-content:space-between; gap:8pt; }
+  #printAreaInv .billto{ border:0.6pt solid var(--line-ink); padding:8pt; margin:6pt 0 10pt; }
+  #printAreaInv .footer-grid{ display:grid; grid-template-columns:1fr 60mm; gap:10pt; align-items:start; margin-top:12pt; }
+
+  /* ====== KHUSUS PENAWARAN (gbr 3) ====== */
+  #printAreaQuote .doc-header{ grid-template-columns:1fr 70mm; }
+  #printAreaQuote .meta-box{ border:0.6pt solid var(--line-ink); padding:8pt; }
+  #printAreaQuote .notes{ font-size:10pt; line-height:1.4; margin-top:10pt; }
+}
+
