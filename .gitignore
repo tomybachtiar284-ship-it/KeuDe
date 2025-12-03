@@ -1,0 +1,13 @@
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Backup/Export
+*.csv
+*.pdf
+keulite-supabase-backup.json
+
+# Env (kalau nanti pakai)
+.env
+.env.*

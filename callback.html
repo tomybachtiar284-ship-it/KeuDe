@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Memproses Autentikasi…</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;display:grid;place-items:center;height:100dvh;margin:0;background:#0b1220;color:#e5e7eb}
+    .box{max-width:560px;padding:24px;border:1px solid #1f2937;border-radius:12px;background:#111827;box-shadow:0 6px 16px rgba(0,0,0,.28)}
+    h1{font-size:20px;margin:0 0 8px}
+    p{margin:6px 0;color:#9ca3af}
+    .muted{font-size:12px;color:#6b7280}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Memproses autentikasi…</h1>
+    <p>Tunggu sebentar, kamu akan diarahkan ke aplikasi.</p>
+    <p class="muted" id="msg"></p>
+  </div>
+
+  <script>
+    // Samakan dengan konfigurasi di index.html/login.html
+    const SUPABASE_URL = 'https://jllomycpshgbhppipyaj.supabase.co';
+    const SUPABASE_ANON_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsbG9teWNwc2hnYmhwcGlweWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyNzg2OTcsImV4cCI6MjA3NTg1NDY5N30.DQYcB25G6blGpQnxyLlaqsX8OTXWMc7q51EtJN35vY4';
+    const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    (async () => {
+      const msg = document.getElementById('msg');
+      try {
+        // Tukar code (OAuth/verify/recovery) menjadi session bila ada
+        await supa.auth.exchangeCodeForSession(window.location.href).catch(()=>{});
+
+        // Cek apakah ini flow recovery (reset password)
+        const params = new URLSearchParams(location.search);
+        const type = params.get('type');
+
+        const { data: { session } } = await supa.auth.getSession();
+        if (type === 'recovery') {
+          // Di flow reset password, arahkan ke login.html (opsional: buat halaman ubah password sendiri)
+          location.replace('login.html');
+          return;
+        }
+
+        // Kalau sudah ada session → masuk ke app
+        if (session) {
+          location.replace('index.html');
+        } else {
+          // Tidak ada sesi → kembali ke login
+          location.replace('login.html');
+        }
+      } catch (e) {
+        msg.textContent = 'Autentikasi gagal: ' + (e?.message || e);
+        setTimeout(()=>location.replace('login.html'), 2500);
+      }
+    })();
+  </script>
+</body>
+</html>
