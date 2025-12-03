@@ -1,0 +1,1513 @@
+// Imports from global scope (CDN)
+const { useState, useEffect, useRef } = React;
+
+// --- Icon Components (Simple SVG) ---
+const Icon = ({ name, size = 20, className = "" }) => {
+    const icons = {
+        'dashboard': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+        'users': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+        'wallet': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>',
+        'file': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+        'arrow': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4 4 4"/><path d="M17 8v12m0 0 4-4m-4 4-4-4"/></svg>',
+        'chart': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
+        'report': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17V7"/><path d="M15 17v-3"/></svg>',
+        'bot': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>',
+        'logout': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+        'menu': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
+        'x': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        'chevron': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>',
+        'search': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
+        'trending-up': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+        'trending-down': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>',
+        'credit': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
+    };
+
+    return <span className={`inline-flex ${className}`} style={{ width: size, height: size }} dangerouslySetInnerHTML={{ __html: icons[name] || icons['file'] }} />;
+};
+
+// --- Services ---
+const StorageService = {
+    get: (key, defaultValue) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : defaultValue;
+        } catch (e) {
+            console.error(`Error reading ${key}:`, e);
+            return defaultValue;
+        }
+    },
+    set: (key, value) => {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (e) {
+            console.error(`Error saving ${key}:`, e);
+        }
+    },
+    remove: (key) => localStorage.removeItem(key)
+};
+
+const AuthService = {
+    login: (username, password) => {
+        if (username === 'admin' && password === 'admin123') {
+            return { id: 1, name: 'Administrator', role: 'admin' };
+        }
+        if (username === 'pengurus' && password === 'user123') {
+            return { id: 2, name: 'Staf Pengurus', role: 'staff' };
+        }
+        return null;
+    },
+    logout: () => StorageService.remove('kop_user_session'),
+    getUser: () => StorageService.get('kop_user_session', null)
+};
+
+const MemberService = {
+    getAll: () => StorageService.get('kop_members', []),
+    save: (member) => {
+        const members = MemberService.getAll();
+        const index = members.findIndex(m => m.id === member.id);
+        if (index >= 0) {
+            members[index] = { ...member, lastModified: new Date().toISOString() };
+        } else {
+            members.push({ ...member, id: Date.now().toString(), joinedDate: new Date().toISOString() });
+        }
+        StorageService.set('kop_members', members);
+    },
+    delete: (id) => {
+        const members = MemberService.getAll().filter(m => m.id !== id);
+        StorageService.set('kop_members', members);
+    }
+};
+
+const TransactionService = {
+    getAll: () => StorageService.get('kop_transactions', []),
+    add: (transaction) => {
+        const transactions = TransactionService.getAll();
+        transactions.unshift({ ...transaction, id: Date.now().toString(), date: new Date().toISOString() });
+        StorageService.set('kop_transactions', transactions);
+    },
+    delete: (id) => {
+        const transactions = TransactionService.getAll().filter(t => t.id !== id);
+        StorageService.set('kop_transactions', transactions);
+    },
+    getStats: () => {
+        const transactions = TransactionService.getAll();
+        let saldo = 0, laba = 0, piutang = 0, hutang = 0;
+
+        transactions.forEach(t => {
+            const amount = parseFloat(t.amount) || 0;
+            if (t.status === 'Lunas') {
+                if (t.type === 'income') {
+                    saldo += amount;
+                    laba += amount;
+                } else if (t.type === 'expense') {
+                    saldo -= amount;
+                    laba -= amount;
+                }
+            } else if (['Belum', 'Pending'].includes(t.status)) {
+                if (t.type === 'income') piutang += amount;
+                else if (t.type === 'expense') hutang += amount;
+            }
+        });
+
+        return { saldo, laba, piutang, hutang };
+    }
+};
+
+const FundsService = {
+    getAll: () => StorageService.get('kop_funds', []),
+    save: (fund) => {
+        const funds = FundsService.getAll();
+        const index = funds.findIndex(f => f.id === fund.id);
+        if (index >= 0) {
+            funds[index] = { ...fund };
+        } else {
+            funds.push({ ...fund, id: Date.now().toString() });
+        }
+        StorageService.set('kop_funds', funds);
+    },
+    togglePayment: (memberId, year, month) => {
+        const fundId = `${memberId}_${year}_${month}`;
+        const funds = FundsService.getAll();
+        const fund = funds.find(f => f.id === fundId);
+
+        if (fund && fund.paid) {
+            // Reverse: Mark as unpaid and delete transaction
+            fund.paid = false;
+            fund.transactionId = null;
+
+            // Delete related transaction
+            if (fund.transactionId) {
+                TransactionService.delete(fund.transactionId);
+            }
+        } else {
+            // Mark as paid and create transaction
+            const member = MemberService.getAll().find(m => m.id === memberId);
+            if (!member) return;
+
+            const amount = 50000; // Default fund amount
+            const transactionId = Date.now().toString();
+
+            TransactionService.add({
+                id: transactionId,
+                type: 'income',
+                description: `Dana Karyawan - ${member.name} (${month} ${year})`,
+                amount: amount,
+                category: 'Dana Karyawan',
+                status: 'Lunas'
+            });
+
+            if (fund) {
+                fund.paid = true;
+                fund.transactionId = transactionId;
+            } else {
+                funds.push({
+                    id: fundId,
+                    memberId,
+                    year,
+                    month,
+                    amount,
+                    paid: true,
+                    transactionId
+                });
+            }
+        }
+
+        StorageService.set('kop_funds', funds);
+    },
+    getByMemberYear: (memberId, year) => {
+        const funds = FundsService.getAll();
+        return funds.filter(f => f.memberId === memberId && f.year === year);
+    }
+};
+
+const formatRupiah = (number) => {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+    }).format(number);
+};
+
+// --- Components ---
+const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab, user, onLogout }) => {
+    const menuItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+        { id: 'members', label: 'Karyawan & Klien', icon: 'users' },
+        { id: 'funds', label: 'Dana Karyawan', icon: 'wallet' },
+        { id: 'documents', label: 'Buat Dokumen', icon: 'file' },
+        { id: 'transactions', label: 'Transaksi', icon: 'arrow' },
+        { id: 'shu', label: 'Dividen & Laba', icon: 'chart' },
+        { id: 'reports', label: 'Laporan', icon: 'report' },
+        { id: 'ai', label: 'AI Analis', icon: 'bot' },
+    ];
+
+    return (
+        <>
+            {isOpen && (
+                <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={toggleSidebar}></div>
+            )}
+
+            <aside className={`fixed top-0 left-0 h-full bg-slate-900 text-white w-64 z-30 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+                <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                            <span className="font-bold text-lg">K</span>
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-lg tracking-tight">KEUDE</h1>
+                            <p className="text-xs text-slate-400">Keuangan PT DKE</p>
+                        </div>
+                    </div>
+                    <button onClick={toggleSidebar} className="lg:hidden text-slate-400 hover:text-white">
+                        <Icon name="x" size={20} />
+                    </button>
+                </div>
+
+                <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-140px)]">
+                    {menuItems.map((item) => {
+                        const isActive = activeTab === item.id;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => {
+                                    setActiveTab(item.id);
+                                    if (window.innerWidth < 1024) toggleSidebar();
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Icon name={item.icon} size={20} />
+                                <span className="font-medium text-sm">{item.label}</span>
+                                {isActive && <Icon name="chevron" size={16} className="ml-auto" />}
+                            </button>
+                        );
+                    })}
+                </nav>
+
+                <div className="absolute bottom-0 left-0 w-full p-4 border-t border-slate-800 bg-slate-900">
+                    <div className="flex items-center gap-3 mb-3 px-2">
+                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold">
+                            {user?.name?.charAt(0)}
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="text-sm font-medium truncate">{user?.name}</p>
+                            <p className="text-xs text-slate-500 truncate capitalize">{user?.role}</p>
+                        </div>
+                    </div>
+                    <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-lg transition-colors text-sm">
+                        <Icon name="logout" size={16} />
+                        <span>Keluar</span>
+                    </button>
+                </div>
+            </aside>
+        </>
+    );
+};
+
+const Login = ({ onLogin }) => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const user = AuthService.login(username, password);
+        if (user) {
+            onLogin(user);
+        } else {
+            setError('Username atau password salah');
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex flex-col md:flex-row">
+            <div className="md:w-1/2 bg-white p-8 md:p-12 flex flex-col justify-center items-center text-center relative overflow-hidden">
+                <div className="relative z-10 max-w-md">
+                    <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-8 flex items-center justify-center shadow-xl shadow-blue-200">
+                        <span className="text-4xl font-bold text-white">K</span>
+                    </div>
+                    <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">PT DAYA KARYA ENERGY</h1>
+                    <p className="text-slate-500 text-lg">Sistem Manajemen Keuangan Terpadu & Arus Kas Korporat</p>
+                </div>
+            </div>
+
+            <div className="md:w-1/2 bg-slate-900 text-white p-8 md:p-12 flex flex-col justify-center">
+                <div className="max-w-sm mx-auto w-full">
+                    <h2 className="text-2xl font-bold mb-2">Selamat Datang Kembali</h2>
+                    <p className="text-slate-400 mb-8">Silakan masuk untuk mengakses dashboard.</p>
+
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg mb-6 text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Username</label>
+                            <input
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Masukkan username"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Password</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Masukkan password"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-blue-900/50"
+                        >
+                            Masuk Sekarang
+                        </button>
+                    </form>
+
+                    <div className="mt-8 text-center text-sm text-slate-500">
+                        <p>Admin: admin / admin123 | Staf: pengurus / user123</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Dashboard = () => {
+    const [stats, setStats] = useState({ saldo: 0, laba: 0, piutang: 0, hutang: 0 });
+    const [recentTransactions, setRecentTransactions] = useState([]);
+
+    useEffect(() => {
+        const loadData = () => {
+            setStats(TransactionService.getStats());
+            setRecentTransactions(TransactionService.getAll().slice(0, 5));
+        };
+        loadData();
+        const interval = setInterval(loadData, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800">Dashboard Overview</h2>
+                <div className="text-sm text-slate-500">Update: {new Date().toLocaleTimeString('id-ID')}</div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                    { title: 'Saldo Kas Real', value: stats.saldo, icon: 'wallet', color: 'blue' },
+                    { title: 'Laba Bersih', value: stats.laba, icon: 'trending-up', color: 'indigo' },
+                    { title: 'Piutang', value: stats.piutang, icon: 'credit', color: 'orange' },
+                    { title: 'Hutang', value: stats.hutang, icon: 'trending-down', color: 'red' },
+                ].map((stat, idx) => (
+                    <div key={idx} className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className={`p-3 rounded-lg bg-${stat.color}-50 text-${stat.color}-600`}>
+                                <Icon name={stat.icon} size={24} />
+                            </div>
+                        </div>
+                        <h3 className="text-slate-500 text-sm font-medium">{stat.title}</h3>
+                        <p className="text-2xl font-bold text-slate-800 mt-1">{formatRupiah(stat.value)}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-6 border-b border-slate-100">
+                    <h3 className="font-bold text-lg text-slate-800">Transaksi Terakhir</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    {recentTransactions.length > 0 ? (
+                        <table className="w-full text-sm">
+                            <thead className="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th className="px-6 py-4 text-left">Tanggal</th>
+                                    <th className="px-6 py-4 text-left">Keterangan</th>
+                                    <th className="px-6 py-4 text-left">Kategori</th>
+                                    <th className="px-6 py-4 text-left">Nominal</th>
+                                    <th className="px-6 py-4 text-left">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {recentTransactions.map((t) => (
+                                    <tr key={t.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-4 text-slate-500">{new Date(t.date).toLocaleDateString('id-ID')}</td>
+                                        <td className="px-6 py-4 font-medium text-slate-800">{t.description}</td>
+                                        <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">{t.category}</span></td>
+                                        <td className={`px-6 py-4 font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${t.status === 'Lunas' ? 'bg-green-100 text-green-700' : t.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                                {t.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="px-6 py-12 text-center text-slate-400">
+                            <p>Belum ada transaksi. Klik menu <strong>Transaksi</strong> untuk menambahkan data.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Members = () => {
+    const [members, setMembers] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [editingMember, setEditingMember] = useState(null);
+
+    useEffect(() => {
+        setMembers(MemberService.getAll());
+    }, []);
+
+    const handleSave = (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        if (editingMember) data.id = editingMember.id;
+        MemberService.save(data);
+        setMembers(MemberService.getAll());
+        setIsModalOpen(false);
+        setEditingMember(null);
+    };
+
+    const handleDelete = (id) => {
+        if (window.confirm('Hapus data ini?')) {
+            MemberService.delete(id);
+            setMembers(MemberService.getAll());
+        }
+    };
+
+    const filteredMembers = members.filter(m =>
+        m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.nik?.includes(searchTerm) ||
+        m.company?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div className="p-6 space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Karyawan & Klien</h2>
+                    <p className="text-slate-500 text-sm">Kelola data anggota internal dan eksternal</p>
+                </div>
+                <button onClick={() => { setEditingMember(null); setIsModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                    <Icon name="users" size={18} />
+                    <span>Tambah Anggota</span>
+                </button>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-4 border-b">
+                    <div className="relative max-w-md">
+                        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Cari nama, ID karyawan atau perusahaan..."
+                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    {filteredMembers.length > 0 ? (
+                        <table className="w-full text-sm">
+                            <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th className="px-4 py-3 text-center w-12">NO</th>
+                                    <th className="px-4 py-3 text-left">ID / NIK</th>
+                                    <th className="px-4 py-3 text-left">NAMA / PERUSAHAAN</th>
+                                    <th className="px-4 py-3 text-left">INFO BANK</th>
+                                    <th className="px-4 py-3 text-left">TANGGAL</th>
+                                    <th className="px-4 py-3 text-right">DANA AWAL</th>
+                                    <th className="px-4 py-3 text-center">STATUS</th>
+                                    <th className="px-4 py-3 text-center">AKSI</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredMembers.map((m, index) => (
+                                    <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-4 py-4 text-center text-slate-400 font-medium">
+                                            {index + 1}
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium w-fit">
+                                                    {m.role === 'internal' ? 'NIK' : 'ID'}
+                                                </span>
+                                                <span className="text-blue-600 font-medium">{m.nik || '-'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-slate-800">{m.name}</span>
+                                                <span className="text-xs text-slate-500 uppercase tracking-wide">
+                                                    {m.role === 'internal' ? 'KARYAWAN' : 'KLIEN'} - {m.company || 'PT DKE'}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4 text-slate-600">
+                                            {m.bankInfo || '-'}
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col text-xs text-slate-500">
+                                                <span>📅 {m.joinedDate ? new Date(m.joinedDate).toLocaleDateString('id-ID') : '-'}</span>
+                                                {m.leftDate && <span className="text-red-500">⛔ {new Date(m.leftDate).toLocaleDateString('id-ID')}</span>}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4 text-right">
+                                            <span className={`font-medium ${m.initialFund ? 'text-green-600' : 'text-slate-400'}`}>
+                                                {m.initialFund ? formatRupiah(m.initialFund) : 'Rp 0'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                                                Aktif
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => { setEditingMember(m); setIsModalOpen(true); }}
+                                                    className="p-1.5 hover:bg-blue-50 rounded transition-colors"
+                                                    title="Edit"
+                                                >
+                                                    <Icon name="file" size={16} className="text-blue-600" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(m.id); }}
+                                                    className="p-1.5 hover:bg-red-50 rounded transition-colors"
+                                                    title="Hapus"
+                                                >
+                                                    <Icon name="x" size={16} className="text-red-600" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="px-6 py-12 text-center text-slate-400">Tidak ada data ditemukan</div>
+                    )}
+                </div>
+            </div>
+
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+                        <div className="p-6 border-b flex justify-between items-center">
+                            <h3 className="font-bold text-lg">{editingMember ? 'Edit Anggota' : 'Tambah Anggota'}</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <Icon name="x" size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSave} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Nama Lengkap</label>
+                                <input name="name" defaultValue={editingMember?.name} required className="w-full bg-slate-50 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">NIK / ID</label>
+                                    <input name="nik" defaultValue={editingMember?.nik} required className="w-full bg-slate-50 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Role</label>
+                                    <select name="role" defaultValue={editingMember?.role || 'internal'} className="w-full bg-slate-50 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                                        <option value="internal">Internal</option>
+                                        <option value="external">Eksternal</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Perusahaan / Instansi</label>
+                                <input name="company" defaultValue={editingMember?.company} className="w-full bg-slate-50 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Info Bank (Nama Bank - No Rek)</label>
+                                <input name="bankInfo" defaultValue={editingMember?.bankInfo} placeholder="BCA - 1234567890" className="w-full bg-slate-50 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Dana Awal (Rp)</label>
+                                    <input name="initialFund" type="number" defaultValue={editingMember?.initialFund || 0} className="w-full bg-slate-50 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Tanggal Masuk</label>
+                                    <input name="joinedDate" type="date" defaultValue={editingMember?.joinedDate ? new Date(editingMember.joinedDate).toISOString().split('T')[0] : ''} className="w-full bg-slate-50 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Tanggal Keluar (Opsional)</label>
+                                <input name="leftDate" type="date" defaultValue={editingMember?.leftDate ? new Date(editingMember.leftDate).toISOString().split('T')[0] : ''} className="w-full bg-slate-50 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Batal</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Simpan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const Transactions = () => {
+    const [transactions, setTransactions] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [formData, setFormData] = useState({
+        type: 'income',
+        description: '',
+        amount: '',
+        category: '',
+        status: 'Lunas'
+    });
+
+    useEffect(() => {
+        setTransactions(TransactionService.getAll());
+    }, []);
+
+    const handleSave = (e) => {
+        e.preventDefault();
+        TransactionService.add(formData);
+        setTransactions(TransactionService.getAll());
+        setIsModalOpen(false);
+        setFormData({ type: 'income', description: '', amount: '', category: '', status: 'Lunas' });
+    };
+
+    const handleDelete = (id) => {
+        if (window.confirm('Hapus transaksi ini?')) {
+            TransactionService.delete(id);
+            setTransactions(TransactionService.getAll());
+        }
+    };
+
+    return (
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800">Transaksi</h2>
+                <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    + Tambah Transaksi
+                </button>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                {transactions.length > 0 ? (
+                    <table className="w-full text-sm">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th className="px-6 py-4 text-left">Tanggal</th>
+                                <th className="px-6 py-4 text-left">Keterangan</th>
+                                <th className="px-6 py-4 text-left">Kategori</th>
+                                <th className="px-6 py-4 text-left">Nominal</th>
+                                <th className="px-6 py-4 text-left">Status</th>
+                                <th className="px-6 py-4 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {transactions.map((t) => (
+                                <tr key={t.id} className="hover:bg-slate-50">
+                                    <td className="px-6 py-4">{new Date(t.date).toLocaleDateString('id-ID')}</td>
+                                    <td className="px-6 py-4">{t.description}</td>
+                                    <td className="px-6 py-4">{t.category}</td>
+                                    <td className={`px-6 py-4 font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 rounded-full text-xs ${t.status === 'Lunas' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                            {t.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button onClick={() => handleDelete(t.id)} className="text-red-600 hover:text-red-800">Hapus</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <div className="px-6 py-12 text-center text-slate-400">Belum ada transaksi</div>
+                )}
+            </div>
+
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+                        <div className="p-6 border-b flex justify-between items-center">
+                            <h3 className="font-bold text-lg">Tambah Transaksi</h3>
+                            <button onClick={() => setIsModalOpen(false)}>
+                                <Icon name="x" size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSave} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Jenis</label>
+                                <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="w-full bg-slate-50 border rounded-lg px-4 py-2">
+                                    <option value="income">Pemasukan</option>
+                                    <option value="expense">Pengeluaran</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Keterangan</label>
+                                <input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required className="w-full bg-slate-50 border rounded-lg px-4 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Nominal</label>
+                                <input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required className="w-full bg-slate-50 border rounded-lg px-4 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Kategori</label>
+                                <input value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} required className="w-full bg-slate-50 border rounded-lg px-4 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Status</label>
+                                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full bg-slate-50 border rounded-lg px-4 py-2">
+                                    <option value="Lunas">Lunas</option>
+                                    <option value="Belum">Belum</option>
+                                    <option value="Pending">Pending</option>
+                                </select>
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 hover:bg-slate-100 rounded-lg">Batal</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Simpan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const Funds = () => {
+    const [year, setYear] = useState(new Date().getFullYear());
+    const [members, setMembers] = useState([]);
+    const [funds, setFunds] = useState([]);
+
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
+    const MONTHLY_OBLIGATION = 50000;
+
+    useEffect(() => {
+        const allMembers = MemberService.getAll();
+        const internalMembers = allMembers.filter(m => m.role === 'internal');
+        setMembers(internalMembers);
+        loadFunds();
+    }, [year]);
+
+    const loadFunds = () => {
+        setFunds(FundsService.getAll());
+    };
+
+    const handleToggle = (memberId, month) => {
+        FundsService.togglePayment(memberId, year, month);
+        loadFunds();
+    };
+
+    const isPaid = (memberId, month) => {
+        const fund = funds.find(f => f.id === `${memberId}_${year}_${month}`);
+        return fund && fund.paid;
+    };
+
+    const getTotalDanaPokok = () => {
+        return members.reduce((sum, m) => sum + (parseFloat(m.initialFund) || 0), 0);
+    };
+
+    const getTotalTabunganWajib = () => {
+        return funds.filter(f => f.year === year && f.paid).reduce((sum, f) => sum + (f.amount || MONTHLY_OBLIGATION), 0);
+    };
+
+    return (
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Monitoring Dana Karyawan</h2>
+                    <p className="text-slate-500 text-sm">Kelola Dana Partisipasi dan Tabungan Wajib Karyawan</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setYear(year - 1)}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                        <Icon name="chevron" size={20} className="rotate-180 text-slate-600" />
+                    </button>
+                    <div className="px-6 py-2 bg-slate-100 text-slate-800 rounded-lg font-bold text-lg">
+                        {year}
+                    </div>
+                    <button
+                        onClick={() => setYear(year + 1)}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                        <Icon name="chevron" size={20} className="text-slate-600" />
+                    </button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Icon name="wallet" size={20} />
+                        <h3 className="text-sm font-medium opacity-90">Total Dana Pokok</h3>
+                    </div>
+                    <p className="text-3xl font-bold mb-2">{formatRupiah(getTotalDanaPokok())}</p>
+                    <p className="text-xs opacity-75">
+                        di {formatRupiah(getTotalDanaPokok() / (members.length || 1))} / karyawan
+                    </p>
+                </div>
+
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                    <div className="flex items-center gap-2 mb-3 text-blue-600">
+                        <Icon name="wallet" size={20} />
+                        <h3 className="text-sm font-medium">Total Tabungan Wajib</h3>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-800 mb-2">{formatRupiah(getTotalTabunganWajib())}</p>
+                    <p className="text-xs text-slate-500">Akumulasi seluruh setoran</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl p-6 text-white shadow-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Icon name="credit" size={20} />
+                        <h3 className="text-sm font-medium opacity-90">Kewajiban Bulanan</h3>
+                    </div>
+                    <p className="text-3xl font-bold mb-2">{formatRupiah(MONTHLY_OBLIGATION)}</p>
+                    <p className="text-xs opacity-75">Per karyawan / bulan</p>
+                </div>
+            </div>
+
+            {members.length > 0 ? (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-100">
+                    <div className="p-4 border-b border-slate-200">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Icon name="chart" size={18} className="text-blue-600" />
+                                <h3 className="font-semibold text-slate-800">
+                                    Tabel Kontrol Pembayaran ({year})
+                                </h3>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-blue-100 rounded"></div>
+                                    <span className="text-slate-600">Lunas (Klik untuk batal)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-slate-100 rounded"></div>
+                                    <span className="text-slate-600">Belum (Klik untuk bayar)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider sticky left-0 bg-slate-50 min-w-[180px]">
+                                        Karyawan
+                                    </th>
+                                    <th className="px-3 py-3 text-right font-semibold text-slate-600 uppercase tracking-wider min-w-[100px]">
+                                        Dana Awal
+                                    </th>
+                                    {months.map(month => (
+                                        <th key={month} className="px-3 py-3 text-center font-semibold text-slate-600 uppercase tracking-wider min-w-[70px]">
+                                            {month}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {members.map((member, idx) => (
+                                    <tr key={member.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-4 py-3 sticky left-0 bg-white">
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-slate-800">{member.name}</span>
+                                                <span className="text-[10px] text-slate-500 uppercase tracking-wide">
+                                                    {member.nik || `EMP-${String(idx + 1).padStart(3, '0')}`}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-3 text-right">
+                                            <span className="font-medium text-slate-700">
+                                                {member.initialFund ? formatRupiah(member.initialFund) : '-'}
+                                            </span>
+                                        </td>
+                                        {months.map(month => {
+                                            const paid = isPaid(member.id, month);
+                                            return (
+                                                <td key={month} className="px-3 py-3 text-center">
+                                                    <button
+                                                        onClick={() => handleToggle(member.id, month)}
+                                                        className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wide transition-all ${paid
+                                                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                                                            }`}
+                                                    >
+                                                        {paid ? 'LUNAS' : '○'}
+                                                    </button>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-white rounded-xl shadow-sm border p-12 text-center text-slate-400">
+                    <p>Belum ada karyawan internal terdaftar.</p>
+                    <p className="text-sm mt-2">Tambahkan karyawan dengan role "Internal" di menu Karyawan & Klien.</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const Documents = () => {
+    const [activeTab, setActiveTab] = useState('penawaran');
+    const [companyInfo, setCompanyInfo] = useState({
+        name: 'PT DAYA KARYA ENERGY',
+        address: 'Jl. Soekarno Hatta No. 55-57, Jakarta Selatan',
+        phone: 'Telp: (021) 555-1000',
+        email: 'Email: info@dayakarya.co.com',
+        logo: 'DKE',
+        signatureTitle: 'Manajer Keuangan'
+    });
+    const [items, setItems] = useState([{ description: '', evidence: '', qty: 1, unit: 'pcs', price: 0 }]);
+    const [customerInfo, setCustomerInfo] = useState({ name: '', company: '' });
+    const [docNumber, setDocNumber] = useState('');
+    const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0]);
+    const [notes, setNotes] = useState('');
+    const [recipientName, setRecipientName] = useState('[Nama Klien]');
+    const [logoImage, setLogoImage] = useState(null);
+    const [ppnRate, setPpnRate] = useState(11); // Default PPN 11%
+
+    // Kwitansi specific fields
+    const [kwitansiData, setKwitansiData] = useState({
+        receivedFrom: '',
+        address: '',
+        amount: 0,
+        amountWords: '',
+        paymentFor: ''
+    });
+
+    const handleLogoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setLogoImage(event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const addItem = () => {
+        setItems([...items, { description: '', evidence: '', qty: 1, unit: 'pcs', price: 0 }]);
+    };
+
+    const removeItem = (index) => {
+        if (items.length > 1) {
+            setItems(items.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateItem = (index, field, value) => {
+        const newItems = [...items];
+        newItems[index][field] = value;
+        setItems(newItems);
+    };
+
+    const calculateSubtotal = () => {
+        return items.reduce((sum, item) => sum + (item.qty * item.price), 0);
+    };
+
+    const calculatePPN = () => {
+        return calculateSubtotal() * (ppnRate / 100);
+    };
+
+    const calculateGrandTotal = () => {
+        return calculateSubtotal() + calculatePPN();
+    };
+
+    const numberToWords = (num) => {
+        const ones = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan'];
+        const teens = ['Sepuluh', 'Sebelas', 'Dua Belas', 'Tiga Belas', 'Empat Belas', 'Lima Belas', 'Enam Belas', 'Tujuh Belas', 'Delapan Belas', 'Sembilan Belas'];
+        const tens = ['', '', 'Dua Puluh', 'Tiga Puluh', 'Empat Puluh', 'Lima Puluh', 'Enam Puluh', 'Tujuh Puluh', 'Delapan Puluh', 'Sembilan Puluh'];
+
+        if (num === 0) return 'Nol';
+        if (num < 10) return ones[num];
+        if (num < 20) return teens[num - 10];
+        if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
+        if (num < 1000) return (num === 100 ? 'Seratus' : ones[Math.floor(num / 100)] + ' Ratus') + (num % 100 ? ' ' + numberToWords(num % 100) : '');
+        if (num < 1000000) return (num === 1000 ? 'Seribu' : numberToWords(Math.floor(num / 1000)) + ' Ribu') + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
+        if (num < 1000000000) return numberToWords(Math.floor(num / 1000000)) + ' Juta' + (num % 1000000 ? ' ' + numberToWords(num % 1000000) : '');
+        return 'Angka terlalu besar';
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleSave = () => {
+        const doc = {
+            id: Date.now().toString(),
+            type: activeTab,
+            number: docNumber,
+            date: docDate,
+            customer: customerInfo,
+            items: items,
+            notes: notes,
+            total: calculateSubtotal(),
+            createdAt: new Date().toISOString()
+        };
+        const docs = StorageService.get('kop_documents', []);
+        docs.unshift(doc);
+        StorageService.set('kop_documents', docs);
+        alert('Dokumen berhasil disimpan ke riwayat!');
+    };
+
+    return (
+        <div className="p-6 space-y-6 print:p-0">
+            <div className="flex justify-between items-start print:hidden">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Buat Dokumen Resmi</h2>
+                    <p className="text-slate-500 text-sm">Surat penawaran harga, invoice, dan berbagai lampiran</p>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={handlePrint} className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg flex items-center gap-2">
+                        <Icon name="file" size={16} />
+                        Print PDF
+                    </button>
+                    <button onClick={handleSave} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2">
+                        <Icon name="save" size={16} />
+                        Simpan
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex gap-2 print:hidden border-b">
+                {['penawaran', 'invoice', 'kwitansi', 'riwayat'].map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-6 py-3 font-medium capitalize transition-colors relative ${activeTab === tab
+                            ? 'text-blue-600 border-b-2 border-blue-600'
+                            : 'text-slate-600 hover:text-slate-800'
+                            }`}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </div>
+
+            {activeTab === 'riwayat' ? (
+                <div className="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 className="text-lg font-semibold mb-4">Riwayat Dokumen</h3>
+                    <div className="text-center text-slate-400 py-12">
+                        <p>Fitur riwayat akan segera tersedia</p>
+                        <p className="text-sm mt-2">Dokumen yang tersimpan akan muncul di sini</p>
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-white rounded-xl shadow-lg border p-8 print:shadow-none print:border-0">
+                    {/* Company Header */}
+                    <div className="grid grid-cols-[1fr_auto] gap-8 mb-6">
+                        <div className="flex items-start gap-4">
+                            <div className="relative group">
+                                <input
+                                    type="file"
+                                    id="logoUpload"
+                                    accept="image/*"
+                                    onChange={handleLogoUpload}
+                                    className="hidden print:hidden"
+                                />
+                                <label
+                                    htmlFor="logoUpload"
+                                    className="w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all bg-slate-50 print:border-0 print:cursor-default"
+                                >
+                                    {logoImage ? (
+                                        <img
+                                            src={logoImage}
+                                            alt="Logo"
+                                            className="w-full h-full object-contain rounded-lg"
+                                        />
+                                    ) : (
+                                        <div className="text-center p-2">
+                                            <svg className="w-8 h-8 mx-auto text-slate-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <p className="text-[10px] text-slate-500 mt-1 font-medium">Logo<br />(Klik)</p>
+                                        </div>
+                                    )}
+                                </label>
+                            </div>
+                            <div>
+                                <h1
+                                    contentEditable
+                                    suppressContentEditableWarning
+                                    onBlur={(e) => setCompanyInfo({ ...companyInfo, name: e.target.textContent })}
+                                    className="text-xl font-bold text-slate-800 mb-1 outline-none focus:bg-blue-50 px-2 py-1 rounded"
+                                >
+                                    {companyInfo.name}
+                                </h1>
+                                <p
+                                    contentEditable
+                                    suppressContentEditableWarning
+                                    onBlur={(e) => setCompanyInfo({ ...companyInfo, address: e.target.textContent })}
+                                    className="text-xs text-slate-600 outline-none focus:bg-slate-50 px-2 py-1 rounded"
+                                >
+                                    {companyInfo.address}
+                                </p>
+                                <p className="text-xs text-slate-600">
+                                    <span
+                                        contentEditable
+                                        suppressContentEditableWarning
+                                        onBlur={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.textContent })}
+                                        className="outline-none focus:bg-slate-50 px-1"
+                                    >
+                                        {companyInfo.phone}
+                                    </span> | <span
+                                        contentEditable
+                                        suppressContentEditableWarning
+                                        onBlur={(e) => setCompanyInfo({ ...companyInfo, email: e.target.textContent })}
+                                        className="outline-none focus:bg-slate-50 px-1"
+                                    >
+                                        {companyInfo.email}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="text-right bg-blue-600 text-white px-6 py-3 rounded-lg">
+                            <h2 className="text-2xl font-bold uppercase tracking-wide">
+                                {activeTab === 'invoice' ? 'Invoice' : activeTab === 'penawaran' ? 'Penawaran Harga' : 'Kwitansi'}
+                            </h2>
+                            <p className="text-sm mt-1">
+                                <input
+                                    type="text"
+                                    value={docNumber}
+                                    onChange={(e) => setDocNumber(e.target.value)}
+                                    className="bg-transparent border-b border-white/30 px-2 py-1 focus:outline-none focus:border-white print:border-0 w-32 text-center"
+                                    placeholder="DOC-2025-020"
+                                />
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-slate-200 my-6"></div>
+
+                    {/* KWITANSI FORMAT */}
+                    {activeTab === 'kwitansi' ? (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Kepada Yth.</label>
+                                    <input
+                                        type="text"
+                                        value={kwitansiData.receivedFrom}
+                                        onChange={(e) => setKwitansiData({ ...kwitansiData, receivedFrom: e.target.value })}
+                                        className="w-full border-b border-slate-300 px-2 py-2 focus:outline-none focus:border-blue-500 print:border-0 font-medium"
+                                        placeholder="Nama Klien / Perusahaan"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={kwitansiData.address}
+                                        onChange={(e) => setKwitansiData({ ...kwitansiData, address: e.target.value })}
+                                        className="w-full border-b border-slate-200 px-2 py-1 focus:outline-none focus:border-blue-500 print:border-0 text-xs text-slate-400 mt-1"
+                                        placeholder="Alamat Lengkap"
+                                    />
+                                </div>
+                                <div className="text-right">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Tanggal Dokumen</label>
+                                    <input
+                                        type="date"
+                                        value={docDate}
+                                        onChange={(e) => setDocDate(e.target.value)}
+                                        className="border-b border-slate-300 px-2 py-2 focus:outline-none focus:border-blue-500 print:border-0 text-right"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="border-2 border-slate-900 p-8 rounded-none mt-8">
+                                <div className="space-y-6">
+                                    <div className="flex items-baseline">
+                                        <span className="w-56 font-bold text-sm flex-shrink-0">SUDAH TERIMA DARI</span>
+                                        <span className="flex-1 flex items-baseline">
+                                            <span className="mx-2">:</span>
+                                            <input
+                                                type="text"
+                                                value={kwitansiData.receivedFrom}
+                                                onChange={(e) => setKwitansiData({ ...kwitansiData, receivedFrom: e.target.value })}
+                                                className="flex-1 border-0 border-b border-dotted border-slate-400 px-2 py-1 focus:outline-none focus:border-blue-600"
+                                                placeholder="-"
+                                            />
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-baseline">
+                                        <span className="w-56 font-bold text-sm flex-shrink-0">BANYAKNYA UANG</span>
+                                        <span className="flex-1 flex items-baseline">
+                                            <span className="mx-2">:</span>
+                                            <input
+                                                type="text"
+                                                value={kwitansiData.amountWords || (kwitansiData.amount > 0 ? numberToWords(Math.floor(kwitansiData.amount)) : '')}
+                                                onChange={(e) => setKwitansiData({ ...kwitansiData, amountWords: e.target.value })}
+                                                className="flex-1 border-0 border-b border-dotted border-slate-400 px-2 py-1 focus:outline-none focus:border-blue-600 italic bg-blue-50"
+                                                placeholder="Rupiah"
+                                            />
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-baseline">
+                                        <span className="w-56 font-bold text-sm flex-shrink-0">UNTUK PEMBAYARAN</span>
+                                        <span className="flex-1 flex items-baseline">
+                                            <span className="mx-2">:</span>
+                                            <input
+                                                type="text"
+                                                value={kwitansiData.paymentFor}
+                                                onChange={(e) => setKwitansiData({ ...kwitansiData, paymentFor: e.target.value })}
+                                                className="flex-1 border-0 border-b border-dotted border-slate-400 px-2 py-1 focus:outline-none focus:border-blue-600"
+                                                placeholder="- -"
+                                            />
+                                        </span>
+                                    </div>
+                                </div>
+                                ) : (
+                                <div>
+                                    <div className="mb-6">
+                                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Kepada Yth.</label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input
+                                                type="text"
+                                                value={customerInfo.name}
+                                                onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                                                className="border-b border-slate-200 px-2 py-2 focus:outline-none focus:border-blue-500 print:border-0"
+                                                placeholder="Nama Klien / Perusahaan"
+                                            />
+                                            <input
+                                                type="date"
+                                                value={docDate}
+                                                onChange={(e) => setDocDate(e.target.value)}
+                                                className="border-b border-slate-200 px-2 py-2 focus:outline-none focus:border-blue-500 print:border-0 text-sm"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-slate-400 mt-1">Alamat Lengkap</p>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <table className="w-full text-xs border-collapse">
+                                            <thead className="bg-slate-50">
+                                                <tr>
+                                                    <th className="text-left px-3 py-3 border border-slate-200 font-semibold text-slate-700 w-12">No</th>
+                                                    <th className="text-left px-3 py-3 border border-slate-200 font-semibold text-slate-700">Deskripsi Barang / Jasa</th>
+                                                    <th className="text-left px-3 py-3 border border-slate-200 font-semibold text-slate-700 w-32">Evidence / Lampiran</th>
+                                                    <th className="text-center px-3 py-3 border border-slate-200 font-semibold text-slate-700 w-16">Qty</th>
+                                                    <th className="text-center px-3 py-3 border border-slate-200 font-semibold text-slate-700 w-16">Unit</th>
+                                                    <th className="text-right px-3 py-3 border border-slate-200 font-semibold text-slate-700 w-28">Harga Satuan</th>
+                                                    <th className="text-right px-3 py-3 border border-slate-200 font-semibold text-slate-700 w-32">Total</th>
+                                                    <th className="px-3 py-3 border border-slate-200 w-12 print:hidden"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {items.map((item, index) => (
+                                                    <tr key={index} className="hover:bg-slate-50">
+                                                        <td className="px-3 py-2 border border-slate-200 text-center text-slate-500">{index + 1}</td>
+                                                        <td className="px-3 py-2 border border-slate-200">
+                                                            <input
+                                                                type="text"
+                                                                value={item.description}
+                                                                onChange={(e) => updateItem(index, 'description', e.target.value)}
+                                                                className="w-full px-2 py-1 focus:outline-none focus:bg-blue-50 rounded"
+                                                                placeholder="Nama Barang / Jasa"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 border border-slate-200">
+                                                            <input
+                                                                type="text"
+                                                                value={item.evidence}
+                                                                onChange={(e) => updateItem(index, 'evidence', e.target.value)}
+                                                                className="w-full px-2 py-1 focus:outline-none focus:bg-blue-50 rounded text-xs"
+                                                                placeholder="Link / Dokumen"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 border border-slate-200 text-center">
+                                                            <input
+                                                                type="number"
+                                                                value={item.qty}
+                                                                onChange={(e) => updateItem(index, 'qty', parseInt(e.target.value) || 0)}
+                                                                className="w-full text-center px-2 py-1 focus:outline-none focus:bg-blue-50 rounded"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 border border-slate-200 text-center">
+                                                            <input
+                                                                type="text"
+                                                                value={item.unit}
+                                                                onChange={(e) => updateItem(index, 'unit', e.target.value)}
+                                                                className="w-full text-center px-2 py-1 focus:outline-none focus:bg-blue-50 rounded"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 border border-slate-200 text-right">
+                                                            <input
+                                                                type="number"
+                                                                value={item.price}
+                                                                onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)}
+                                                                className="w-full text-right px-2 py-1 focus:outline-none focus:bg-blue-50 rounded"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2 border border-slate-200 text-right font-medium text-slate-800">
+                                                            {formatRupiah(item.qty * item.price)}
+                                                        </td>
+                                                        <td className="px-3 py-2 border border-slate-200 text-center print:hidden">
+                                                            <button
+                                                                onClick={() => removeItem(index)}
+                                                                className="text-red-600 hover:text-red-800 text-xs px-2 py-1 hover:bg-red-50 rounded"
+                                                                disabled={items.length === 1}
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+
+                                        <button
+                                            onClick={addItem}
+                                            className="mt-3 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-medium print:hidden flex items-center gap-2"
+                                        >
+                                            + Tambah Baris
+                                        </button>
+                                    </div>
+
+                                    <div className="flex justify-end mb-6">
+                                        <div className="w-80">
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center py-2 border-b border-slate-200">
+                                                    <span className="font-bold text-sm text-slate-700 uppercase">TOTAL JUMLAH</span>
+                                                    <span className="text-lg font-bold text-slate-800">{formatRupiah(calculateSubtotal())}</span>
+                                                </div>
+
+                                                <div className="flex justify-between items-center py-2 print:hidden">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm text-slate-600">PPN</span>
+                                                        <input
+                                                            type="number"
+                                                            value={ppnRate}
+                                                            onChange={(e) => setPpnRate(parseFloat(e.target.value) || 0)}
+                                                            className="w-16 text-center px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:border-blue-500"
+                                                            min="0"
+                                                            max="100"
+                                                            step="0.1"
+                                                        />
+                                                        <span className="text-xs text-slate-500">%</span>
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-slate-700">{formatRupiah(calculatePPN())}</span>
+                                                </div>
+
+                                                <div className="flex justify-between items-center py-3 border-t-2 border-slate-800 bg-slate-50 px-3 -mx-3 print:bg-white">
+                                                    <span className="font-bold text-slate-800 uppercase">Grand Total (incl. PPN)</span>
+                                                    <span className="text-xl font-bold text-blue-600">{formatRupiah(calculateGrandTotal())}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <p className="text-sm text-slate-600">
+                                            <span className="font-semibold">Terbilang:</span> <span className="italic">{numberToWords(Math.floor(calculateGrandTotal()))} Rupiah</span>
+                                        </p>
+                                    </div>
+
+                                    <div className="mb-8 bg-slate-50 rounded-lg p-4">
+                                        <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Catatan / Keterangan</label>
+                                        <textarea
+                                            value={notes}
+                                            onChange={(e) => setNotes(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+                                            rows="3"
+                                            placeholder="Masukan catatan terbilang, term pembayaran, dan info relevan lainnya..."
+                                        />
+                                    </div>
+                                </div>
+                    )}
+
+                                {/* Signatures - Common for all formats */}
+                                <div className="grid grid-cols-2 gap-8 mt-12">
+                                    <div className="text-center">
+                                        <p className="text-sm text-slate-600 mb-20">Penerima,</p>
+                                        <div className="border-t border-slate-300 pt-2 inline-block min-w-[200px]">
+                                            <p
+                                                contentEditable
+                                                suppressContentEditableWarning
+                                                onBlur={(e) => setRecipientName(e.target.textContent)}
+                                                className="text-sm font-medium outline-none focus:bg-blue-50 px-2 py-1 rounded cursor-text"
+                                            >
+                                                {recipientName}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-sm text-slate-600 mb-20">Hormat Kami,</p>
+                                        <div className="border-t border-slate-300 pt-2 inline-block min-w-[200px]">
+                                            <p
+                                                contentEditable
+                                                suppressContentEditableWarning
+                                                onBlur={(e) => setCompanyInfo({ ...companyInfo, name: e.target.textContent })}
+                                                className="text-sm font-bold outline-none focus:bg-blue-50 px-2 py-1 rounded cursor-text"
+                                            >
+                                                {companyInfo.name}
+                                            </p>
+                                            <p
+                                                contentEditable
+                                                suppressContentEditableWarning
+                                                onBlur={(e) => setCompanyInfo({ ...companyInfo, signatureTitle: e.target.textContent })}
+                                                className="text-xs text-slate-500 mt-1 outline-none focus:bg-blue-50 px-2 py-1 rounded cursor-text"
+                                            >
+                                                {companyInfo.signatureTitle}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div >
+                            )
+            }
+                        </div >
+                    );
+};
+
+const App = () => {
+    const [user, setUser] = useState(null);
+
+                    const [activeTab, setActiveTab] = useState('dashboard');
+                    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    useEffect(() => {
+        const savedUser = AuthService.getUser();
+                    if (savedUser) setUser(savedUser);
+    }, []);
+
+    const handleLogin = (userData) => {
+                        setUser(userData);
+                    StorageService.set('kop_user_session', userData);
+    };
+
+    const handleLogout = () => {
+                        setUser(null);
+                    AuthService.logout();
+    };
+
+                    if (!user) {
+        return <Login onLogin={handleLogin} />;
+    }
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'dashboard': return <Dashboard />;
+                    case 'members': return <Members />;
+                    case 'transactions': return <Transactions />;
+                    case 'funds': return <Funds />;
+                    case 'documents': return <Documents />;
+                    default: return <div className="p-6 text-slate-500">Modul {activeTab} sedang dalam pengembangan</div>;
+        }
+    };
+
+                    return (
+                    <div className="flex min-h-screen bg-slate-50">
+                        <Sidebar isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} activeTab={activeTab} setActiveTab={setActiveTab} user={user} onLogout={handleLogout} />
+
+                        <main className="flex-1 lg:ml-64 w-full">
+                            <header className="lg:hidden bg-white border-b p-4 flex items-center justify-between sticky top-0 z-10">
+                                <button onClick={() => setIsSidebarOpen(true)}>
+                                    <Icon name="menu" size={24} />
+                                </button>
+                                <span className="font-bold">KEUDE</span>
+                                <div className="w-6"></div>
+                            </header>
+
+                            <div className="min-h-full">
+                                {renderContent()}
+                            </div>
+                        </main>
+                    </div>
+                    );
+};
+
+                    const root = ReactDOM.createRoot(document.getElementById('root'));
+                    root.render(<App />);
