@@ -159,16 +159,33 @@ const compressImage = async (file) => {
 };
 
 const AuthService = {
-    login: (username, password) => {
-        if (username === 'admin' && password === 'admin123') {
-            const user = { username, role: 'admin', loginTime: new Date().toISOString() };
-            StorageService.set('kop_user_session', user);
-            return user;
-        }
-        return null;
+    login: async (email, password) => {
+        const supabase = getSupabase();
+        if (!supabase) throw new Error("Supabase client not initialized");
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+        if (error) throw error;
+        return data.user;
     },
-    logout: () => StorageService.remove('kop_user_session'),
-    getUser: () => StorageService.get('kop_user_session')
+    logout: async () => {
+        const supabase = getSupabase();
+        if (supabase) await supabase.auth.signOut();
+    },
+    getUser: async () => {
+        const supabase = getSupabase();
+        if (!supabase) return null;
+        const { data } = await supabase.auth.getUser();
+        return data.user;
+    },
+    onAuthStateChange: (callback) => {
+        const supabase = getSupabase();
+        if (!supabase) return null;
+        return supabase.auth.onAuthStateChange((event, session) => {
+            callback(session?.user || null);
+        });
+    }
 };
 
 const MemberService = {
@@ -563,27 +580,24 @@ const numberToWords = (number) => {
 };
 
 const Login = ({ onLogin }) => {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const user = AuthService.login(username, password);
-        if (user) {
-            onLogin(user);
-        } else {
-            setError('Username atau password salah');
-        }
-    };
-
-    const handleDemoLogin = (role) => {
-        if (role === 'admin') {
-            setUsername('admin');
-            setPassword('admin123');
-        } else {
-            setUsername('pengurus');
-            setPassword('user123');
+        setError('');
+        setLoading(true);
+        try {
+            const user = await AuthService.login(email, password);
+            if (user) {
+                onLogin(user);
+            }
+        } catch (err) {
+            setError(err.message || 'Login gagal. Periksa email dan password Anda.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -659,17 +673,17 @@ const Login = ({ onLogin }) => {
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">ID Pengguna</label>
+                                <label className="text-sm font-medium text-slate-300">Email</label>
                                 <div className="relative group">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <Icon name="user" size={18} className="text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                                        <Icon name="mail" size={18} className="text-slate-500 group-focus-within:text-blue-500 transition-colors" />
                                     </div>
                                     <input
-                                        type="text"
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
                                         className="w-full bg-slate-800/50 border border-slate-700 text-white text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent block w-full pl-11 p-3.5 placeholder-slate-500 transition-all"
-                                        placeholder="Masukkan username"
+                                        placeholder="Masukkan email"
                                         required
                                     />
                                 </div>
@@ -690,9 +704,6 @@ const Login = ({ onLogin }) => {
                                         required
                                     />
                                 </div>
-                                <div className="flex justify-end">
-                                    <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Lupa Password?</button>
-                                </div>
                             </div>
 
                             {error && (
@@ -704,31 +715,12 @@ const Login = ({ onLogin }) => {
 
                             <button
                                 type="submit"
-                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                                disabled={loading}
+                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Masuk Sistem <Icon name="arrow-right" size={18} />
+                                {loading ? 'Memproses...' : 'Masuk Sistem'} <Icon name="arrow-right" size={18} />
                             </button>
                         </form>
-
-                        <div className="mt-10 pt-8 border-t border-slate-800">
-                            <p className="text-xs text-slate-500 mb-4 text-center">Akun Demo (Klik untuk isi):</p>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => handleDemoLogin('admin')}
-                                    className="p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl text-left transition-all group"
-                                >
-                                    <div className="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">Admin</div>
-                                    <div className="text-[10px] text-slate-500">admin / admin123</div>
-                                </button>
-                                <button
-                                    onClick={() => handleDemoLogin('staf')}
-                                    className="p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl text-left transition-all group"
-                                >
-                                    <div className="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">Staf</div>
-                                    <div className="text-[10px] text-slate-500">pengurus / user123</div>
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -3166,12 +3158,25 @@ const App = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     useEffect(() => {
-        const session = AuthService.getUser();
-        if (session) setUser(session);
+        // Check initial session
+        AuthService.getUser().then(session => {
+            setUser(session);
+        });
+
+        // Listen for auth changes
+        const { data: authListener } = AuthService.onAuthStateChange((user) => {
+            setUser(user);
+        });
+
+        return () => {
+            if (authListener && authListener.subscription) {
+                authListener.subscription.unsubscribe();
+            }
+        };
     }, []);
 
     const handleLogin = (userData) => setUser(userData);
-    const handleLogout = () => { AuthService.logout(); setUser(null); };
+    const handleLogout = () => { AuthService.logout(); };
 
     if (!user) return <Login onLogin={handleLogin} />;
 
