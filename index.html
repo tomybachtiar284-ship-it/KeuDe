@@ -33,52 +33,38 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- Custom Styles -->
-    <!DOCTYPE html>
-    <html lang="id">
+    <link rel="stylesheet" href="styles.css">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>KEUDE - Keuangan PT DKE</title>
-
-        <!-- Fonts -->
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-            rel="stylesheet">
-
-        <!-- Tailwind CSS -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            sans: ['Inter', 'sans-serif'],
-                        }
-                    }
-                }
-            }
-        </script>
-
-        <!-- React & ReactDOM -->
-        <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-        <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
-        <!-- Babel -->
-        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-        <!-- Lucide Icons -->
-        <script src="https://unpkg.com/lucide@latest"></script>
-
-        <!-- Custom Styles -->
-        <link rel="stylesheet" href="styles.css">
-    </head>
+    <!-- Global Error Handler -->
+    <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            const errorContainer = document.createElement('div');
+            errorContainer.style.position = 'fixed';
+            errorContainer.style.top = '0';
+            errorContainer.style.left = '0';
+            errorContainer.style.width = '100%';
+            errorContainer.style.backgroundColor = '#fee2e2';
+            errorContainer.style.color = '#991b1b';
+            errorContainer.style.padding = '1rem';
+            errorContainer.style.zIndex = '9999';
+            errorContainer.style.fontFamily = 'monospace';
+            errorContainer.style.borderBottom = '1px solid #f87171';
+            errorContainer.innerHTML = `<strong>Error:</strong> ${message}<br><small>${source}:${lineno}:${colno}</small>`;
+            document.body.appendChild(errorContainer);
+            console.error('Global Error:', error);
+        };
+    </script>
+</head>
 
 <body class="bg-slate-50 text-slate-900 antialiased">
     <div id="root"></div>
 
     <!-- Main Application Logic -->
-    <script type="text/babel" src="app.js?v=2"></script>
+    <script type="text/babel" src="app.js?v=3"></script>
 </body>
 
 </html>
