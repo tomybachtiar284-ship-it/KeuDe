@@ -455,16 +455,28 @@ const DividendService = {
             directors: 10,
             commissioners: 5,
             employees: 10,
-            csr: 10
+            csr: 10,
+            welfareFund: 0
         };
         const { data } = await supabase.from('app_settings').select('value').eq('key', 'dividend_settings').single();
-        return data ? data.value : {
+        return data ? {
+            ...{
+                retainedEarnings: 40,
+                dividends: 25,
+                directors: 10,
+                commissioners: 5,
+                employees: 10,
+                csr: 10,
+                welfareFund: 0
+            }, ...data.value
+        } : {
             retainedEarnings: 40,
             dividends: 25,
             directors: 10,
             commissioners: 5,
             employees: 10,
-            csr: 10
+            csr: 10,
+            welfareFund: 0
         };
     },
     saveSettings: async (settings) => {
@@ -728,7 +740,7 @@ const Login = ({ onLogin }) => {
 
 const ActivityLogPanel = () => {
     const [logs, setLogs] = useState([]);
-    const [isOpen, setIsOpen] = useState(true);
+    const [isOpen, setIsOpen] = useState(false);
 
     const fetchLogs = async () => {
         const data = await ActivityLogService.getAll();
@@ -752,10 +764,13 @@ const ActivityLogPanel = () => {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center gap-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all w-full"
+                className="mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all w-full group"
             >
-                <Icon name="activity" size={18} className="text-blue-600" />
-                Tampilkan Log Aktivitas
+                <div className="flex items-center gap-2">
+                    <Icon name="activity" size={18} className="text-blue-600" />
+                    <span>Log Aktivitas Sistem</span>
+                </div>
+                <Icon name="chevron-down" size={18} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
             </button>
         );
     }
@@ -2265,7 +2280,8 @@ const Dividends = () => {
         directors: 10,
         commissioners: 5,
         employees: 10,
-        csr: 10
+        csr: 10,
+        welfareFund: 0
     });
     const [capital, setCapital] = useState(100000000);
     const [netProfit, setNetProfit] = useState(0);
@@ -2333,7 +2349,8 @@ const Dividends = () => {
         { id: 'directors', label: 'Bonus Direksi', color: 'bg-purple-500' },
         { id: 'commissioners', label: 'Bonus Komisaris', color: 'bg-orange-500' },
         { id: 'employees', label: 'Bonus Karyawan', color: 'bg-pink-500' },
-        { id: 'csr', label: 'CSR (Dana Sosial)', color: 'bg-teal-500' }
+        { id: 'csr', label: 'CSR (Dana Sosial)', color: 'bg-teal-500' },
+        { id: 'welfareFund', label: 'Dana Kesejahteraan Perusahaan', color: 'bg-indigo-500' }
     ];
 
     return (
@@ -2907,8 +2924,8 @@ const AIAnalysis = () => {
 
     useEffect(() => {
         // Simulate AI Processing Delay
-        const timer = setTimeout(() => {
-            const transactions = TransactionService.getAll();
+        const timer = setTimeout(async () => {
+            const transactions = await TransactionService.getAll();
             const today = new Date();
             const last6Months = [];
 
