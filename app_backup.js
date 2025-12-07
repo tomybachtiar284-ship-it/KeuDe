@@ -1,8 +1,3 @@
-// Dependency Check
-if (typeof React === 'undefined') console.error('CRITICAL: React is not loaded!');
-if (typeof ReactDOM === 'undefined') console.error('CRITICAL: ReactDOM is not loaded!');
-if (typeof window.supabase === 'undefined') console.error('CRITICAL: Supabase Client is not loaded!');
-
 // React hooks
 const { useState, useEffect, useRef } = React;
 
@@ -36,20 +31,11 @@ const Icon = ({ name, size = 24, className = "" }) => {
     return <span ref={ref} className="inline-flex items-center justify-center" />;
 };
 
+// Services
 // Supabase Initialization
 const supabaseUrl = 'https://jllomycpshgbhppipyaj.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsbG9teWNwc2hnYmhwcGlweWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyNzg2OTcsImV4cCI6MjA3NTg1NDY5N30.DQYcB25G6blGpQnxyLlaqsX8OTXWMc7q51EtJN35vY4';
-let _supabase = null;
-
-const getSupabase = () => {
-    if (_supabase) return _supabase;
-    if (window.supabase) {
-        _supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-        return _supabase;
-    }
-    console.error('Supabase client not loaded');
-    return null;
-};
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Services
 const StorageService = {
@@ -63,8 +49,6 @@ const StorageService = {
 
 const ActivityLogService = {
     getAll: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return [];
         const { data, error } = await supabase
             .from('activity_logs')
             .select('*')
@@ -77,159 +61,48 @@ const ActivityLogService = {
         return data;
     },
     add: async (action, description, details = null) => {
-        const supabase = getSupabase();
-        if (!supabase) return;
-
-        const { data: { user } } = await supabase.auth.getUser();
-        const userName = user ? (user.user_metadata?.full_name || user.email) : 'system';
-
+        const user = StorageService.get('kop_user_session');
         const newLog = {
             action,
             description,
             details,
-            user_name: userName
+            user_name: user ? user.username : 'system'
         };
         const { error } = await supabase.from('activity_logs').insert([newLog]);
         if (error) console.error('Error adding log:', error);
         return newLog;
     },
     clear: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return;
         const { error } = await supabase.from('activity_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         if (error) console.error('Error clearing logs:', error);
     }
 };
 
-
-
-
-const formatRupiah = (number) => {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0
-    }).format(number);
-};
-
-const formatDate = (dateString) => {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString || new Date()).toLocaleDateString('id-ID', options);
-};
-
-// Image Compression Helper
-const compressImage = async (file) => {
-    // Only compress images
-    if (!file.type.startsWith('image/')) return file;
-
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1200; // Max width for good readability but low size
-                const scaleSize = MAX_WIDTH / img.width;
-                const newWidth = (img.width > MAX_WIDTH) ? MAX_WIDTH : img.width;
-                const newHeight = (img.width > MAX_WIDTH) ? (img.height * scaleSize) : img.height;
-
-                canvas.width = newWidth;
-                canvas.height = newHeight;
-
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, newWidth, newHeight);
-
-                // Compress to JPEG with 0.7 quality
-                canvas.toBlob((blob) => {
-                    if (!blob) {
-                        reject(new Error('Canvas is empty'));
-                        return;
-                    }
-                    // Create new file with same name but .jpg extension if needed, or keep original name
-                    const newFile = new File([blob], file.name, {
-                        type: 'image/jpeg',
-                        lastModified: Date.now(),
-                    });
-                    resolve(newFile);
-                }, 'image/jpeg', 0.7);
-            };
-            img.onerror = (error) => reject(error);
-        };
-        reader.onerror = (error) => reject(error);
-    });
-};
-
 const AuthService = {
-    login: async (email, password) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Supabase client not initialized");
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-        });
-        if (error) throw error;
-        return data.user;
+    login: async (username, password) => {
+        if (username === 'admin' && password === 'admin123') {
+            const user = { username, role: 'admin', loginTime: new Date().toISOString() };
+            StorageService.set('kop_user_session', user);
+            return user;
+        }
+        return null;
     },
-    logout: async () => {
-        const supabase = getSupabase();
-        if (supabase) await supabase.auth.signOut();
-    },
-    getUser: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return null;
-        const { data } = await supabase.auth.getUser();
-        return data.user;
-    },
-    onAuthStateChange: (callback) => {
-        const supabase = getSupabase();
-        if (!supabase) return null;
-        return supabase.auth.onAuthStateChange((event, session) => {
-            callback(session?.user || null);
-        });
-    }
+    logout: () => StorageService.remove('kop_user_session'),
+    getUser: () => StorageService.get('kop_user_session')
 };
 
 const MemberService = {
     getAll: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return [];
         const { data, error } = await supabase.from('members').select('*');
         if (error) {
             console.error('Error fetching members:', error);
             return [];
         }
-        return data.map(m => ({
-            id: m.id,
-            type: m.type,
-            name: m.name,
-            company: m.company,
-            nik: m.nik,
-            bankName: m.bank_name,
-            accountNumber: m.account_number,
-            joinDate: m.join_date,
-            initialFund: parseFloat(m.initial_fund),
-            initialFundStatus: m.initial_fund_status,
-            status: m.status
-        }));
+        return data;
     },
     add: async (member) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
-        const dbMember = {
-            type: member.type,
-            name: member.name,
-            company: member.company,
-            nik: member.nik,
-            bank_name: member.bankName,
-            account_number: member.accountNumber,
-            join_date: member.joinDate,
-            initial_fund: member.initialFund,
-            initial_fund_status: member.initialFundStatus,
-            status: member.status
-        };
-        const { data, error } = await supabase.from('members').insert([dbMember]).select();
+        const { id, ...memberData } = member;
+        const { data, error } = await supabase.from('members').insert([memberData]).select();
         if (error) {
             console.error('Error adding member:', error);
             throw error;
@@ -237,22 +110,8 @@ const MemberService = {
         await ActivityLogService.add('MEMBER_ADD', `Menambahkan anggota baru: ${member.name}`, { memberId: data[0].id });
         return data[0];
     },
-    update: async (id, member) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
-        const dbMember = {
-            type: member.type,
-            name: member.name,
-            company: member.company,
-            nik: member.nik,
-            bank_name: member.bankName,
-            account_number: member.accountNumber,
-            join_date: member.joinDate,
-            initial_fund: member.initialFund,
-            initial_fund_status: member.initialFundStatus,
-            status: member.status
-        };
-        const { error } = await supabase.from('members').update(dbMember).eq('id', id);
+    update: async (id, data) => {
+        const { error } = await supabase.from('members').update(data).eq('id', id);
         if (error) {
             console.error('Error updating member:', error);
             throw error;
@@ -260,8 +119,6 @@ const MemberService = {
         await ActivityLogService.add('MEMBER_UPDATE', `Mengubah data anggota`, { memberId: id });
     },
     delete: async (id) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
         const { error } = await supabase.from('members').delete().eq('id', id);
         if (error) {
             console.error('Error deleting member:', error);
@@ -273,73 +130,16 @@ const MemberService = {
 
 const TransactionService = {
     getAll: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return [];
         const { data, error } = await supabase.from('transactions').select('*').order('date', { ascending: false });
         if (error) {
             console.error('Error fetching transactions:', error);
             return [];
         }
-        return data.map(t => ({
-            id: t.id,
-            date: t.date,
-            type: t.type,
-            amount: parseFloat(t.amount),
-            category: t.category,
-            description: t.description,
-            status: t.status,
-            attachment: t.proof_image
-        }));
+        return data;
     },
     add: async (transaction) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
-
-        let proofUrl = null;
-        if (transaction.attachment instanceof File) {
-            let file = transaction.attachment;
-
-            // Compress if it's an image
-            if (file.type.startsWith('image/')) {
-                try {
-                    console.log('Compressing image...', file.size);
-                    file = await compressImage(file);
-                    console.log('Compressed size:', file.size);
-                } catch (err) {
-                    console.warn('Image compression failed, using original file:', err);
-                }
-            }
-
-            const fileExt = file.name.split('.').pop();
-            // Sanitize filename
-            const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-            const filePath = `${Date.now()}_${cleanFileName}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('transaction-proofs')
-                .upload(filePath, file);
-
-            if (uploadError) {
-                console.error('Error uploading file:', uploadError);
-                throw new Error(`Gagal upload lampiran: ${uploadError.message}. Pastikan bucket 'transaction-proofs' ada dan public.`);
-            } else {
-                const { data } = supabase.storage
-                    .from('transaction-proofs')
-                    .getPublicUrl(filePath);
-                proofUrl = data.publicUrl;
-            }
-        }
-
-        const dbTransaction = {
-            date: transaction.date,
-            type: transaction.type,
-            amount: transaction.amount,
-            category: transaction.category,
-            description: transaction.description,
-            status: transaction.status,
-            proof_image: proofUrl || transaction.attachment
-        };
-        const { data, error } = await supabase.from('transactions').insert([dbTransaction]).select();
+        const { id, ...trxData } = transaction;
+        const { data, error } = await supabase.from('transactions').insert([trxData]).select();
         if (error) {
             console.error('Error adding transaction:', error);
             throw error;
@@ -347,55 +147,8 @@ const TransactionService = {
         await ActivityLogService.add('TRANSACTION_ADD', `Menambahkan transaksi ${transaction.type === 'income' ? 'Pemasukan' : 'Pengeluaran'} sebesar ${formatRupiah(transaction.amount)}`, { transactionId: data[0].id });
         return data[0];
     },
-    update: async (id, transaction) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
-
-        let proofUrl = transaction.attachment; // Default to existing
-        if (transaction.attachment instanceof File) {
-            let file = transaction.attachment;
-
-            // Compress if it's an image
-            if (file.type.startsWith('image/')) {
-                try {
-                    console.log('Compressing image...', file.size);
-                    file = await compressImage(file);
-                    console.log('Compressed size:', file.size);
-                } catch (err) {
-                    console.warn('Image compression failed, using original file:', err);
-                }
-            }
-
-            const fileExt = file.name.split('.').pop();
-            // Sanitize filename
-            const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-            const filePath = `${Date.now()}_${cleanFileName}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('transaction-proofs')
-                .upload(filePath, file);
-
-            if (uploadError) {
-                console.error('Error uploading file:', uploadError);
-                throw new Error(`Gagal upload lampiran: ${uploadError.message}. Pastikan bucket 'transaction-proofs' ada dan public.`);
-            } else {
-                const { data } = supabase.storage
-                    .from('transaction-proofs')
-                    .getPublicUrl(filePath);
-                proofUrl = data.publicUrl;
-            }
-        }
-
-        const dbTransaction = {
-            date: transaction.date,
-            type: transaction.type,
-            amount: transaction.amount,
-            category: transaction.category,
-            description: transaction.description,
-            status: transaction.status,
-            proof_image: proofUrl
-        };
-        const { error } = await supabase.from('transactions').update(dbTransaction).eq('id', id);
+    update: async (id, data) => {
+        const { error } = await supabase.from('transactions').update(data).eq('id', id);
         if (error) {
             console.error('Error updating transaction:', error);
             throw error;
@@ -403,8 +156,6 @@ const TransactionService = {
         await ActivityLogService.add('TRANSACTION_UPDATE', `Mengubah transaksi ${id}`, { transactionId: id });
     },
     delete: async (id) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
         const { error } = await supabase.from('transactions').delete().eq('id', id);
         if (error) {
             console.error('Error deleting transaction:', error);
@@ -416,8 +167,6 @@ const TransactionService = {
 
 const FundsService = {
     getAll: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return {};
         const { data, error } = await supabase.from('payments').select('*');
         if (error) return {};
 
@@ -430,8 +179,6 @@ const FundsService = {
         return funds;
     },
     togglePayment: async (memberId, month, year) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
         const { data: existing } = await supabase.from('payments')
             .select('*')
             .eq('member_id', memberId)
@@ -454,8 +201,6 @@ const FundsService = {
         }
     },
     getPayment: async (memberId, month, year) => {
-        const supabase = getSupabase();
-        if (!supabase) return null;
         const { data } = await supabase.from('payments')
             .select('*')
             .eq('member_id', memberId)
@@ -468,104 +213,110 @@ const FundsService = {
 
 const DividendService = {
     getSettings: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return {
-            retainedEarnings: 40,
-            dividends: 25,
-            directors: 10,
-            commissioners: 5,
-            employees: 10,
-            csr: 10,
-            welfareFund: 0
-        };
         const { data } = await supabase.from('app_settings').select('value').eq('key', 'dividend_settings').single();
-        return data ? {
-            ...{
-                retainedEarnings: 40,
-                dividends: 25,
-                directors: 10,
-                commissioners: 5,
-                employees: 10,
-                csr: 10,
-                welfareFund: 0
-            }, ...data.value
-        } : {
+        return data ? data.value : {
             retainedEarnings: 40,
             dividends: 25,
             directors: 10,
             commissioners: 5,
             employees: 10,
-            csr: 10,
-            welfareFund: 0
+            csr: 10
         };
     },
     saveSettings: async (settings) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
         const { error } = await supabase.from('app_settings').upsert([{ key: 'dividend_settings', value: settings }]);
         if (!error) await ActivityLogService.add('DIVIDEND_SETTINGS_UPDATE', 'Mengubah pengaturan dividen');
     },
     getCapital: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return 100000000;
         const { data } = await supabase.from('app_settings').select('value').eq('key', 'initial_capital').single();
         return data ? data.value : 100000000;
     },
     saveCapital: async (amount) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
         const { error } = await supabase.from('app_settings').upsert([{ key: 'initial_capital', value: amount }]);
         if (!error) await ActivityLogService.add('CAPITAL_UPDATE', `Mengubah modal awal perusahaan menjadi ${formatRupiah(amount)}`);
     }
 };
 
+const MigrationService = {
+    migrate: async (onProgress) => {
+        try {
+            // 1. Migrate Members
+            onProgress('Migrating Members...');
+            const localMembers = StorageService.get('kop_members', []);
+            if (localMembers.length > 0) {
+                const { error } = await supabase.from('members').upsert(localMembers);
+                if (error) throw error;
+            }
 
-const DocumentService = {
-    add: async (document) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
+            // 2. Migrate Transactions
+            onProgress('Migrating Transactions...');
+            const localTransactions = StorageService.get('kop_transactions', []);
+            if (localTransactions.length > 0) {
+                // Ensure numeric amount
+                const cleanTrxs = localTransactions.map(t => ({
+                    ...t,
+                    amount: parseFloat(t.amount) || 0
+                }));
+                const { error } = await supabase.from('transactions').upsert(cleanTrxs);
+                if (error) throw error;
+            }
 
-        const dbDocument = {
-            type: document.type,
-            number: document.number,
-            date: document.date,
-            company_info: document.companyInfo,
-            customer_info: document.customerInfo,
-            items: document.items,
-            notes: document.notes,
-            recipient_name: document.recipientName,
-            kwitansi_data: document.kwitansiData,
-            status: 'saved'
-        };
+            // 3. Migrate Activity Logs
+            onProgress('Migrating Activity Logs...');
+            const localLogs = StorageService.get('kop_activity_log', []);
+            if (localLogs.length > 0) {
+                const { error } = await supabase.from('activity_logs').upsert(localLogs);
+                if (error) throw error;
+            }
 
-        const { data, error } = await supabase.from('documents').insert([dbDocument]).select();
-        if (error) {
-            console.error('Error adding document:', error);
-            throw error;
+            // 4. Migrate Payments (Funds)
+            onProgress('Migrating Payments...');
+            const localFunds = StorageService.get('kop_funds', {});
+            const paymentRecords = [];
+            // Transform nested object to flat array
+            // Structure: { "memberId_year": { "monthIndex": { paid: true, amount: 50000, date: ... } } }
+            Object.entries(localFunds).forEach(([key, months]) => {
+                const [memberId, year] = key.split('_');
+                Object.entries(months).forEach(([month, data]) => {
+                    if (data && data.paid) {
+                        paymentRecords.push({
+                            member_id: memberId,
+                            year: parseInt(year),
+                            month: parseInt(month),
+                            amount: data.amount,
+                            paid_at: data.date
+                        });
+                    }
+                });
+            });
+            if (paymentRecords.length > 0) {
+                const { error } = await supabase.from('payments').upsert(paymentRecords);
+                if (error) throw error;
+            }
+
+            // 5. Migrate Settings
+            onProgress('Migrating Settings...');
+            const dividendSettings = StorageService.get('kop_dividend_settings');
+            if (dividendSettings) {
+                await supabase.from('app_settings').upsert({ key: 'dividend_settings', value: dividendSettings });
+            }
+            const initialCapital = StorageService.get('kop_initial_capital');
+            if (initialCapital) {
+                await supabase.from('app_settings').upsert({ key: 'initial_capital', value: { amount: initialCapital } });
+            }
+
+            onProgress('Migration Complete!');
+            return { success: true };
+        } catch (error) {
+            console.error('Migration failed:', error);
+            return { success: false, error };
         }
-        await ActivityLogService.add('DOCUMENT_ADD', `Membuat dokumen ${document.type} ${document.number}`, { documentId: data[0].id });
-        return data[0];
-    },
-    getAll: async () => {
-        const supabase = getSupabase();
-        if (!supabase) return [];
-        const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
-        if (error) {
-            console.error('Error fetching documents:', error);
-            return [];
-        }
-        return data;
-    },
-    delete: async (id) => {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error("Database connection not ready");
-        const { error } = await supabase.from('documents').delete().eq('id', id);
-        if (error) {
-            console.error('Error deleting document:', error);
-            throw error;
-        }
-        await ActivityLogService.add('DOCUMENT_DELETE', `Menghapus dokumen ${id}`, { documentId: id });
     }
+};
+
+// Utilities
+const formatRupiah = (amount) => {
+    return 'Rp ' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
 const numberToWords = (number) => {
@@ -583,24 +334,27 @@ const numberToWords = (number) => {
 };
 
 const Login = ({ onLogin }) => {
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            const user = await AuthService.login(email, password);
-            if (user) {
-                onLogin(user);
-            }
-        } catch (err) {
-            setError(err.message || 'Login gagal. Periksa email dan password Anda.');
-        } finally {
-            setLoading(false);
+        const user = await AuthService.login(username, password);
+        if (user) {
+            onLogin(user);
+        } else {
+            setError('Username atau password salah');
+        }
+    };
+
+    const handleDemoLogin = (role) => {
+        if (role === 'admin') {
+            setUsername('admin');
+            setPassword('admin123');
+        } else {
+            setUsername('pengurus');
+            setPassword('user123');
         }
     };
 
@@ -676,17 +430,17 @@ const Login = ({ onLogin }) => {
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Email</label>
+                                <label className="text-sm font-medium text-slate-300">ID Pengguna</label>
                                 <div className="relative group">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <Icon name="mail" size={18} className="text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                                        <Icon name="user" size={18} className="text-slate-500 group-focus-within:text-blue-500 transition-colors" />
                                     </div>
                                     <input
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        type="text"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
                                         className="w-full bg-slate-800/50 border border-slate-700 text-white text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent block w-full pl-11 p-3.5 placeholder-slate-500 transition-all"
-                                        placeholder="Masukkan email"
+                                        placeholder="Masukkan username"
                                         required
                                     />
                                 </div>
@@ -707,6 +461,9 @@ const Login = ({ onLogin }) => {
                                         required
                                     />
                                 </div>
+                                <div className="flex justify-end">
+                                    <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Lupa Password?</button>
+                                </div>
                             </div>
 
                             {error && (
@@ -718,12 +475,31 @@ const Login = ({ onLogin }) => {
 
                             <button
                                 type="submit"
-                                disabled={loading}
-                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
                             >
-                                {loading ? 'Memproses...' : 'Masuk Sistem'} <Icon name="arrow-right" size={18} />
+                                Masuk Sistem <Icon name="arrow-right" size={18} />
                             </button>
                         </form>
+
+                        <div className="mt-10 pt-8 border-t border-slate-800">
+                            <p className="text-xs text-slate-500 mb-4 text-center">Akun Demo (Klik untuk isi):</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => handleDemoLogin('admin')}
+                                    className="p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl text-left transition-all group"
+                                >
+                                    <div className="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">Admin</div>
+                                    <div className="text-[10px] text-slate-500">admin / admin123</div>
+                                </button>
+                                <button
+                                    onClick={() => handleDemoLogin('staf')}
+                                    className="p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl text-left transition-all group"
+                                >
+                                    <div className="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">Staf</div>
+                                    <div className="text-[10px] text-slate-500">pengurus / user123</div>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -735,7 +511,7 @@ const Login = ({ onLogin }) => {
 
 const ActivityLogPanel = () => {
     const [logs, setLogs] = useState([]);
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(true);
 
     const fetchLogs = async () => {
         const data = await ActivityLogService.getAll();
@@ -759,13 +535,10 @@ const ActivityLogPanel = () => {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all w-full group"
+                className="mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center gap-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all w-full"
             >
-                <div className="flex items-center gap-2">
-                    <Icon name="activity" size={18} className="text-blue-600" />
-                    <span>Log Aktivitas Sistem</span>
-                </div>
-                <Icon name="chevron-down" size={18} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+                <Icon name="activity" size={18} className="text-blue-600" />
+                Tampilkan Log Aktivitas
             </button>
         );
     }
@@ -797,7 +570,7 @@ const ActivityLogPanel = () => {
                             </span>
                             <div className="flex-1">
                                 <p className="text-slate-700 font-medium">
-                                    <span className="text-blue-600 font-bold mr-1">[{log.user_name}]</span>
+                                    <span className="text-blue-600 font-bold mr-1">[{log.user}]</span>
                                     {log.description}
                                 </p>
                             </div>
@@ -814,7 +587,7 @@ const Dashboard = () => {
         income: 0,
         expense: 0,
         balance: 0,
-        receivable: 0,
+        receivable: 25000000, // Mocked based on reference
         debt: 0,
         salaryExpense: 0,
         transactions: []
@@ -831,8 +604,9 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
-        const fetchTransactions = async () => {
+        const fetchData = async () => {
             const transactions = await TransactionService.getAll();
+            console.log("Dashboard Transactions:", transactions);
 
             // Real Cash Flow (Only Paid)
             const income = transactions
@@ -857,9 +631,12 @@ const Dashboard = () => {
                 .filter(t => t.type === 'expense' && (t.category === 'Pajak' || (t.category && t.category.toLowerCase().includes('pajak'))))
                 .reduce((sum, t) => sum + t.amount, 0);
 
+            // Salary Expense
             const salaryExpense = transactions
                 .filter(t => t.type === 'expense' && (t.category === 'Gaji Karyawan' || (t.category && t.category.toLowerCase().includes('gaji'))))
                 .reduce((sum, t) => sum + t.amount, 0);
+
+            console.log("Calculated Salary Expense:", salaryExpense);
 
             setStats({
                 income,
@@ -872,8 +649,7 @@ const Dashboard = () => {
                 transactions: transactions.slice(0, 5)
             });
         };
-
-        fetchTransactions();
+        fetchData();
     }, []);
 
     const formatDate = (dateString) => {
@@ -898,26 +674,26 @@ const Dashboard = () => {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div
-                    onMouseEnter={() => setActiveTooltip('income')}
+                    onMouseEnter={() => setActiveTooltip('balance')}
                     onMouseLeave={() => setActiveTooltip(null)}
                     className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 transform transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-help"
                 >
-                    <div className="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center text-green-600 mb-4">
-                        <Icon name="arrow-up-right" size={24} />
+                    <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+                        <Icon name="wallet" size={24} />
                     </div>
-                    <p className="text-sm font-medium text-slate-500 mb-1">Total Pemasukan Real</p>
-                    <h3 className="text-2xl font-bold text-slate-900">{formatRupiah(stats.income)}</h3>
+                    <p className="text-sm font-medium text-slate-500 mb-1">Saldo Kas Real</p>
+                    <h3 className="text-2xl font-bold text-slate-900">{formatRupiah(stats.balance)}</h3>
                 </div>
                 <div
-                    onMouseEnter={() => setActiveTooltip('expense')}
+                    onMouseEnter={() => setActiveTooltip('profit')}
                     onMouseLeave={() => setActiveTooltip(null)}
                     className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 transform transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-help"
                 >
-                    <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center text-red-600 mb-4">
-                        <Icon name="arrow-down-right" size={24} />
+                    <div className="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 mb-4">
+                        <Icon name="trending-up" size={24} />
                     </div>
-                    <p className="text-sm font-medium text-slate-500 mb-1">Total Pengeluaran Real</p>
-                    <h3 className="text-2xl font-bold text-slate-900">{formatRupiah(stats.expense)}</h3>
+                    <p className="text-sm font-medium text-slate-500 mb-1">Laba Bersih Real</p>
+                    <h3 className="text-2xl font-bold text-slate-900">{formatRupiah(stats.balance)}</h3>
                 </div>
                 <div
                     onMouseEnter={() => setActiveTooltip('receivable')}
@@ -988,11 +764,7 @@ const Dashboard = () => {
                                             <p className="text-xs text-slate-500 capitalize">{trx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</p>
                                         </td>
                                         <td className="py-4">
-                                            <span className={`px-3 py-1 rounded-lg text-xs font-bold ${trx.status === 'Lunas' ? 'bg-blue-50 text-blue-600' :
-                                                trx.status === 'Belum Dibayar' ? 'bg-red-50 text-red-600' : 'bg-yellow-50 text-yellow-600'
-                                                }`}>
-                                                {trx.status}
-                                            </span>
+                                            <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold">Lunas</span>
                                         </td>
                                         <td className={`py-4 text-right text-sm font-bold ${trx.type === 'income' ? 'text-blue-600' : 'text-red-500'}`}>
                                             {trx.type === 'income' ? '+' : '-'}{formatRupiah(trx.amount)}
@@ -1091,27 +863,21 @@ const Members = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            const dataToSave = {
-                ...formData,
-                initialFund: parseFloat(formData.initialFund) || 0
-            };
+        const dataToSave = {
+            ...formData,
+            initialFund: parseFloat(formData.initialFund) || 0
+        };
 
-            if (editingId) {
-                await MemberService.update(editingId, dataToSave);
-            } else {
-                await MemberService.add(dataToSave);
-            }
-
-            const updatedMembers = await MemberService.getAll();
-            setMembers(updatedMembers);
-            setShowModal(false);
-            resetForm();
-            alert('Data berhasil disimpan!');
-        } catch (error) {
-            console.error('Error saving member:', error);
-            alert('Gagal menyimpan data. Silakan coba lagi.\n' + (error.message || ''));
+        if (editingId) {
+            await MemberService.update(editingId, dataToSave);
+        } else {
+            await MemberService.add(dataToSave);
         }
+
+        const updatedMembers = await MemberService.getAll();
+        setMembers(updatedMembers);
+        setShowModal(false);
+        resetForm();
     };
 
     const handleEdit = (member) => {
@@ -1139,8 +905,8 @@ const Members = () => {
     const handleDelete = async (id) => {
         if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
             await MemberService.delete(id);
-            const updatedMembers = await MemberService.getAll();
-            setMembers(updatedMembers);
+            const updated = await MemberService.getAll();
+            setMembers(updated);
         }
     };
 
@@ -1149,11 +915,6 @@ const Members = () => {
         m.nik.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (m.company && m.company.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-
-    // Calculate Stats
-    const totalEmployees = members.filter(m => m.type === 'karyawan').length;
-    const totalClients = members.filter(m => m.type === 'klien').length;
-    const totalActive = members.filter(m => m.status === 'Aktif').length;
 
     return (
         <div className="space-y-8">
@@ -1166,37 +927,6 @@ const Members = () => {
                 <button onClick={() => { resetForm(); setShowModal(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-all hover:shadow-md">
                     <Icon name="plus" size={20} /> Tambah Data
                 </button>
-            </div>
-
-            {/* Stats Panel */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
-                        <Icon name="users" size={24} />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-slate-500">Total Karyawan</p>
-                        <h3 className="text-2xl font-bold text-slate-900">{totalEmployees}</h3>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-                        <Icon name="briefcase" size={24} />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-slate-500">Total Klien</p>
-                        <h3 className="text-2xl font-bold text-slate-900">{totalClients}</h3>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
-                        <Icon name="check-circle" size={24} />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-slate-500">Status Aktif</p>
-                        <h3 className="text-2xl font-bold text-slate-900">{totalActive}</h3>
-                    </div>
-                </div>
             </div>
 
             {/* Search */}
@@ -1406,10 +1136,10 @@ const Transactions = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const trxData = await TransactionService.getAll();
-            setTransactions(trxData);
-            const memberData = await MemberService.getAll();
-            setMembers(memberData);
+            const trxs = await TransactionService.getAll();
+            setTransactions(trxs);
+            const mems = await MemberService.getAll();
+            setMembers(mems);
         };
         fetchData();
     }, []);
@@ -1427,41 +1157,37 @@ const Transactions = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            const finalCategory = formData.category === 'Pajak' ? (formData.customCategory || 'Pajak') : formData.category;
+        const finalCategory = formData.category === 'Pajak' ? (formData.customCategory || 'Pajak') : formData.category;
 
-            const dataToSave = {
-                ...formData,
-                type,
-                category: finalCategory,
-                amount: parseFloat(formData.amount) || 0
-            };
+        const dataToSave = {
+            ...formData,
+            type,
+            category: finalCategory,
+            amount: parseFloat(formData.amount) || 0
+        };
 
-            if (editingId) {
-                await TransactionService.update(editingId, dataToSave);
-                setEditingId(null);
-            } else {
-                await TransactionService.add(dataToSave);
-            }
-
-            const updatedTrx = await TransactionService.getAll();
-            setTransactions(updatedTrx);
-
-            setFormData({
-                date: new Date().toISOString().split('T')[0],
-                status: 'Lunas',
-                relatedMemberId: '',
-                category: '',
-                customCategory: '',
-                description: '',
-                amount: '',
-                attachment: null
-            });
+        if (editingId) {
+            await TransactionService.update(editingId, dataToSave);
+            setEditingId(null);
+            alert('Transaksi berhasil diperbarui!');
+        } else {
+            await TransactionService.add(dataToSave);
             alert('Transaksi berhasil disimpan!');
-        } catch (error) {
-            console.error('Error saving transaction:', error);
-            alert('Gagal menyimpan transaksi. Silakan coba lagi.\n' + (error.message || ''));
         }
+
+        const trxs = await TransactionService.getAll();
+        setTransactions(trxs);
+        // Reset form but keep date
+        setFormData({
+            date: formData.date,
+            status: 'Lunas',
+            relatedMemberId: '',
+            category: '',
+            customCategory: '',
+            description: '',
+            amount: '',
+            attachment: null
+        });
     };
 
     const handleEdit = (trx) => {
@@ -1497,8 +1223,8 @@ const Transactions = () => {
     const handleDelete = async (id) => {
         if (confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
             await TransactionService.delete(id);
-            const updatedTrx = await TransactionService.getAll();
-            setTransactions(updatedTrx);
+            const trxs = await TransactionService.getAll();
+            setTransactions(trxs);
         }
     };
 
@@ -1691,7 +1417,6 @@ const Transactions = () => {
                                 <th className="px-6 py-4">Kategori / Deskripsi</th>
                                 <th className="px-6 py-4">Terkait</th>
                                 <th className="px-6 py-4 text-center">Status</th>
-                                <th className="px-6 py-4 text-center">Lampiran</th>
                                 <th className="px-6 py-4 text-right">Nominal</th>
                                 <th className="px-6 py-4 text-center">Aksi</th>
                             </tr>
@@ -1716,24 +1441,6 @@ const Transactions = () => {
                                             }`}>
                                             {trx.status}
                                         </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        {trx.attachment ? (
-                                            <button
-                                                type="button"
-                                                className="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer z-50 relative mx-auto"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    alert('Link: ' + trx.attachment); // Debug alert
-                                                    window.open(trx.attachment, '_blank');
-                                                }}
-                                            >
-                                                <Icon name="paperclip" size={14} /> Lihat
-                                            </button>
-                                        ) : (
-                                            <span className="text-slate-400 text-xs">-</span>
-                                        )}
                                     </td>
                                     <td className={`px-6 py-4 text-right font-bold ${trx.type === 'income' ? 'text-blue-600' : 'text-red-600'}`}>
                                         {trx.type === 'income' ? '+' : '-'}{formatRupiah(trx.amount)}
@@ -1760,7 +1467,7 @@ const Transactions = () => {
                             ))}
                             {transactions.length === 0 && (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-12 text-center text-slate-400">
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400">
                                         <div className="flex flex-col items-center gap-2">
                                             <Icon name="clipboard-list" size={32} className="text-slate-200" />
                                             <p>Belum ada riwayat transaksi</p>
@@ -1785,18 +1492,18 @@ const Funds = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const allMembers = await MemberService.getAll();
-            setMembers(allMembers.filter(m => m.type === 'karyawan'));
-            const allFunds = await FundsService.getAll();
-            setFundsData(allFunds);
+            const mems = await MemberService.getAll();
+            setMembers(mems.filter(m => m.type === 'karyawan'));
+            const funds = await FundsService.getAll();
+            setFundsData(funds);
         };
         fetchData();
     }, [year]);
 
     const handleToggle = async (memberId, monthIndex) => {
         await FundsService.togglePayment(memberId, monthIndex, year);
-        const updatedFunds = await FundsService.getAll();
-        setFundsData(updatedFunds);
+        const funds = await FundsService.getAll();
+        setFundsData(funds);
     };
 
     const isPaid = (memberId, monthIndex) => {
@@ -1977,17 +1684,6 @@ const Documents = () => {
         amountWords: '',
         paymentFor: ''
     });
-    const [documents, setDocuments] = useState([]);
-
-    useEffect(() => {
-        if (activeTab === 'riwayat') {
-            const fetchDocuments = async () => {
-                const docs = await DocumentService.getAll();
-                setDocuments(docs);
-            };
-            fetchDocuments();
-        }
-    }, [activeTab]);
 
     const handleLogoUpload = (e) => {
         const file = e.target.files[0];
@@ -2011,54 +1707,7 @@ const Documents = () => {
     const calculateGrandTotal = () => calculateSubtotal() + calculatePPN();
 
     const handlePrint = () => window.print();
-
-    const handleSave = async () => {
-        try {
-            const documentData = {
-                type: activeTab,
-                number: docNumber,
-                date: docDate,
-                companyInfo,
-                customerInfo,
-                items,
-                notes,
-                recipientName,
-                kwitansiData: activeTab === 'kwitansi' ? kwitansiData : null
-            };
-            await DocumentService.add(documentData);
-            alert('Dokumen berhasil disimpan!');
-            setActiveTab('riwayat');
-        } catch (error) {
-            alert('Gagal menyimpan dokumen: ' + error.message);
-        }
-    };
-
-    const handleView = (doc) => {
-        setActiveTab(doc.type);
-        setDocNumber(doc.number);
-        setDocDate(doc.date);
-        setCompanyInfo(doc.company_info);
-        setCustomerInfo(doc.customer_info || { name: '', address: '' });
-        setItems(doc.items || []);
-        setNotes(doc.notes || '');
-        setRecipientName(doc.recipient_name || '');
-        if (doc.type === 'kwitansi' && doc.kwitansi_data) {
-            setKwitansiData(doc.kwitansi_data);
-        }
-    };
-
-    const handleDelete = async (id) => {
-        if (confirm('Apakah Anda yakin ingin menghapus dokumen ini?')) {
-            try {
-                await DocumentService.delete(id);
-                const docs = await DocumentService.getAll();
-                setDocuments(docs);
-                alert('Dokumen berhasil dihapus');
-            } catch (error) {
-                alert('Gagal menghapus dokumen: ' + error.message);
-            }
-        }
-    };
+    const handleSave = () => alert('Dokumen disimpan ke Riwayat (Simulasi)');
 
     // Helper for amount input with dots
     const handleAmountChange = (e) => {
@@ -2070,18 +1719,6 @@ const Documents = () => {
 
     return (
         <div className="space-y-6">
-            <style>
-                {`
-                    @media print {
-                        @page { margin: 0; size: auto; }
-                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        .print-header { display: grid !important; grid-template-columns: 1fr auto !important; gap: 2rem !important; align-items: start !important; }
-                        .print-logo-section { display: flex !important; align-items: flex-start !important; gap: 1rem !important; }
-                        .print-logo-img { width: 100px !important; height: 100px !important; object-fit: contain !important; }
-                        .print-blue-box { background-color: #2563eb !important; color: white !important; -webkit-print-color-adjust: exact; }
-                    }
-                `}
-            </style>
             <div className="flex justify-between items-center print:hidden">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800">Buat Dokumen Resmi</h2>
@@ -2091,11 +1728,9 @@ const Documents = () => {
                     <button onClick={handlePrint} className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg flex items-center gap-2">
                         <Icon name="file" size={16} /> Print PDF
                     </button>
-                    {activeTab !== 'riwayat' && (
-                        <button onClick={handleSave} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2">
-                            <Icon name="save" size={16} /> Simpan
-                        </button>
-                    )}
+                    <button onClick={handleSave} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2">
+                        <Icon name="save" size={16} /> Simpan
+                    </button>
                 </div>
             </div>
 
@@ -2108,83 +1743,33 @@ const Documents = () => {
             </div>
 
             {activeTab === 'riwayat' ? (
-                <div className="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 className="font-bold text-lg mb-4">Riwayat Dokumen</h3>
-                    {documents.length === 0 ? (
-                        <div className="text-center text-slate-400 py-12">
-                            <Icon name="file-text" size={48} className="mx-auto mb-2 opacity-50" />
-                            <p>Belum ada dokumen yang disimpan</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Tanggal</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Nomor</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Tipe</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Klien / Penerima</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {documents.map((doc) => (
-                                        <tr key={doc.id} className="hover:bg-slate-50">
-                                            <td className="px-6 py-4 text-sm text-slate-600">{doc.date}</td>
-                                            <td className="px-6 py-4 text-sm font-bold text-slate-800">{doc.number || '-'}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold capitalize">{doc.type}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-slate-600">
-                                                {doc.type === 'kwitansi' ? doc.kwitansi_data?.receivedFrom : doc.customer_info?.name}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button
-                                                        onClick={() => handleView(doc)}
-                                                        className="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center gap-1"
-                                                    >
-                                                        <Icon name="eye" size={16} /> Lihat
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(doc.id)}
-                                                        className="text-red-600 hover:text-red-800 text-xs font-bold flex items-center gap-1"
-                                                    >
-                                                        <Icon name="trash-2" size={16} /> Hapus
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                <div className="bg-white rounded-xl shadow-sm border p-6 text-center text-slate-400 py-12">
+                    <p>Fitur riwayat akan segera tersedia</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl shadow-lg border p-8 print:shadow-none print:border-0 print:p-0">
+                <div className="bg-white rounded-xl shadow-lg border p-8 print:shadow-none print:border-0">
                     {/* Header */}
-                    <div className="grid grid-cols-[1fr_auto] gap-8 mb-6 print-header">
-                        <div className="flex items-start gap-4 print-logo-section">
+                    <div className="grid grid-cols-[1fr_auto] gap-8 mb-6">
+                        <div className="flex items-start gap-4">
                             <div className="relative group">
                                 <input type="file" id="logoUpload" accept="image/*" onChange={handleLogoUpload} className="hidden print:hidden" />
-                                <label htmlFor="logoUpload" className="w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all bg-slate-50 print:border-0 print:cursor-default print:w-auto print:h-auto print:bg-transparent">
-                                    {logoImage ? <img src={logoImage} alt="Logo" className="w-full h-full object-contain rounded-lg print-logo-img" /> : <div className="text-center p-2 print:hidden"><span className="text-xs text-slate-500">Logo (Klik)</span></div>}
+                                <label htmlFor="logoUpload" className="w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all bg-slate-50 print:border-0 print:cursor-default">
+                                    {logoImage ? <img src={logoImage} alt="Logo" className="w-full h-full object-contain rounded-lg" /> : <div className="text-center p-2"><span className="text-xs text-slate-500">Logo (Klik)</span></div>}
                                 </label>
                             </div>
                             <div>
-                                <h1 contentEditable suppressContentEditableWarning onBlur={(e) => setCompanyInfo({ ...companyInfo, name: e.target.textContent })} className="text-xl font-bold text-slate-800 mb-1 outline-none focus:bg-blue-50 px-2 py-1 rounded print:px-0 print:text-2xl">{companyInfo.name}</h1>
-                                <p contentEditable suppressContentEditableWarning onBlur={(e) => setCompanyInfo({ ...companyInfo, address: e.target.textContent })} className="text-xs text-slate-600 outline-none focus:bg-slate-50 px-2 py-1 rounded print:px-0 print:text-sm">{companyInfo.address}</p>
-                                <p className="text-xs text-slate-600 px-2 print:px-0 print:text-sm">{companyInfo.phone} | {companyInfo.email}</p>
+                                <h1 contentEditable suppressContentEditableWarning onBlur={(e) => setCompanyInfo({ ...companyInfo, name: e.target.textContent })} className="text-xl font-bold text-slate-800 mb-1 outline-none focus:bg-blue-50 px-2 py-1 rounded">{companyInfo.name}</h1>
+                                <p contentEditable suppressContentEditableWarning onBlur={(e) => setCompanyInfo({ ...companyInfo, address: e.target.textContent })} className="text-xs text-slate-600 outline-none focus:bg-slate-50 px-2 py-1 rounded">{companyInfo.address}</p>
+                                <p className="text-xs text-slate-600 px-2">{companyInfo.phone} | {companyInfo.email}</p>
                             </div>
                         </div>
-                        <div className="text-right bg-blue-600 text-white px-6 py-3 rounded-lg print-blue-box">
+                        <div className="text-right bg-blue-600 text-white px-6 py-3 rounded-lg">
                             <h2 className="text-2xl font-bold uppercase tracking-wide">{activeTab === 'invoice' ? 'Invoice' : activeTab === 'penawaran' ? 'Penawaran Harga' : 'Kwitansi'}</h2>
                             <input
                                 type="text"
                                 value={docNumber}
                                 onChange={(e) => setDocNumber(e.target.value)}
-                                className="text-sm mt-1 bg-transparent text-white border-b border-white/20 focus:outline-none focus:border-white text-right w-32 placeholder-white/50 print:border-0 print:text-white"
+                                className="text-sm mt-1 bg-transparent text-white border-b border-white/20 focus:outline-none focus:border-white text-right w-32 placeholder-white/50"
                             />
                         </div>
                     </div>
@@ -2307,8 +1892,7 @@ const Dividends = () => {
         directors: 10,
         commissioners: 5,
         employees: 10,
-        csr: 10,
-        welfareFund: 0
+        csr: 10
     });
     const [capital, setCapital] = useState(100000000);
     const [netProfit, setNetProfit] = useState(0);
@@ -2317,11 +1901,11 @@ const Dividends = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            // Fetch Settings & Capital
-            const settingsData = await DividendService.getSettings();
-            setSettings(settingsData);
-            const capitalData = await DividendService.getCapital();
-            setCapital(capitalData);
+            // Load Settings & Capital
+            const s = await DividendService.getSettings();
+            setSettings(s);
+            const c = await DividendService.getCapital();
+            setCapital(c);
 
             // Calculate Net Profit
             const transactions = await TransactionService.getAll();
@@ -2329,46 +1913,26 @@ const Dividends = () => {
             const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
             setNetProfit(income - expense);
 
-            // Calculate Additional Capital (Member Funds + MANDATORY SAVINGS)
+            // Calculate Additional Capital (Member Funds)
             const members = await MemberService.getAll();
-            const totalInitialFunds = members.reduce((sum, m) => sum + (parseFloat(m.initialFund) || 0), 0);
-
-            // Add Total Mandatory Savings from all time
-            const allFunds = await FundsService.getAll();
-            let totalMandatorySavings = 0;
-            Object.values(allFunds).forEach(yearRecords => {
-                Object.values(yearRecords).forEach(payment => {
-                    if (payment && payment.amount) {
-                        totalMandatorySavings += (parseFloat(payment.amount) || 0);
-                    }
-                });
-            });
-
-            setAdditionalCapital(totalInitialFunds + totalMandatorySavings);
+            const totalFunds = members.reduce((sum, m) => sum + (parseFloat(m.initialFund) || 0), 0);
+            setAdditionalCapital(totalFunds);
         };
         fetchData();
     }, []);
 
     const handleSettingChange = (key, value) => {
-        setSettings(prev => ({ ...prev, [key]: value }));
+        const newSettings = { ...settings, [key]: parseFloat(value) || 0 };
+        setSettings(newSettings);
     };
 
     const handleSaveSettings = async () => {
-        // Convert back to numbers for validation and saving
-        const numericSettings = {};
-        let total = 0;
-        for (const [key, val] of Object.entries(settings)) {
-            const num = parseFloat(val) || 0;
-            numericSettings[key] = num;
-            total += num;
-        }
-
-        if (Math.abs(total - 100) > 0.01) { // Use epsilon for float comparison
+        const total = Object.values(settings).reduce((a, b) => a + b, 0);
+        if (total !== 100) {
             alert(`Total persentase harus 100%. Saat ini: ${total}%`);
             return;
         }
-        await DividendService.saveSettings(numericSettings);
-        setSettings(numericSettings);
+        await DividendService.saveSettings(settings);
         alert('Pengaturan berhasil disimpan!');
     };
 
@@ -2377,10 +1941,8 @@ const Dividends = () => {
         setIsEditingCapital(false);
     };
 
-    const baseEquity = (parseFloat(capital) || 0) + (parseFloat(additionalCapital) || 0);
-    const retainedEarningsAmount = (parseFloat(netProfit) || 0) * ((parseFloat(settings.retainedEarnings) || 0) / 100);
-    const totalEquity = baseEquity + retainedEarningsAmount;
-    const totalPercentage = Object.values(settings).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+    const totalEquity = capital + additionalCapital + (netProfit * (settings.retainedEarnings / 100));
+    const totalPercentage = Object.values(settings).reduce((a, b) => a + b, 0);
 
     const allocations = [
         { id: 'retainedEarnings', label: 'Laba Ditahan (Retained Earnings)', color: 'bg-blue-500' },
@@ -2388,8 +1950,7 @@ const Dividends = () => {
         { id: 'directors', label: 'Bonus Direksi', color: 'bg-purple-500' },
         { id: 'commissioners', label: 'Bonus Komisaris', color: 'bg-orange-500' },
         { id: 'employees', label: 'Bonus Karyawan', color: 'bg-pink-500' },
-        { id: 'csr', label: 'CSR (Dana Sosial)', color: 'bg-teal-500' },
-        { id: 'welfareFund', label: 'Dana Kesejahteraan Perusahaan', color: 'bg-indigo-500' }
+        { id: 'csr', label: 'CSR (Dana Sosial)', color: 'bg-teal-500' }
     ];
 
     return (
@@ -2475,16 +2036,16 @@ const Dividends = () => {
                         <h4 className="font-bold text-blue-800 mb-4">Proyeksi Tahun Depan</h4>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                                <span className="text-blue-600">Ekuitas Awal:</span>
-                                <span className="font-medium text-slate-700">{formatRupiah(baseEquity)}</span>
+                                <span className="text-blue-600">Ekuitas Saat Ini:</span>
+                                <span className="font-medium text-slate-700">{formatRupiah(totalEquity)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-blue-600">(+) Laba Ditahan:</span>
-                                <span className="font-medium text-slate-700">{formatRupiah(retainedEarningsAmount)}</span>
+                                <span className="font-medium text-slate-700">{formatRupiah(netProfit * (settings.retainedEarnings / 100))}</span>
                             </div>
                             <div className="border-t border-blue-200 pt-2 mt-2 flex justify-between font-bold">
-                                <span className="text-blue-800">Estimasi Ekuitas Akhir:</span>
-                                <span className="text-blue-900">{formatRupiah(totalEquity)}</span>
+                                <span className="text-blue-800">Estimasi Ekuitas:</span>
+                                <span className="text-blue-900">{formatRupiah(totalEquity + (netProfit * (settings.retainedEarnings / 100)))}</span>
                             </div>
                         </div>
                     </div>
@@ -2499,8 +2060,8 @@ const Dividends = () => {
                                 <Icon name="sliders" size={20} className="text-slate-400" />
                                 <h3 className="text-lg font-bold text-slate-800">Konfigurasi Persentase</h3>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${Math.abs(totalPercentage - 100) < 0.01 ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
-                                Total: {Number(totalPercentage).toFixed(2).replace(/\.00$/, '')}%
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${totalPercentage === 100 ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
+                                Total: {totalPercentage}%
                             </span>
                         </div>
 
@@ -2514,12 +2075,11 @@ const Dividends = () => {
                                     <div className="relative">
                                         <input
                                             type="number"
-                                            step="any"
                                             value={settings[item.id]}
                                             onChange={(e) => handleSettingChange(item.id, e.target.value)}
                                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-slate-700"
                                         />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold pointer-events-none">%</span>
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
                                     </div>
                                 </div>
                             ))}
@@ -2564,7 +2124,7 @@ const Dividends = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-slate-900">
-                                                {formatRupiah(netProfit * ((parseFloat(settings[item.id]) || 0) / 100))}
+                                                {formatRupiah(netProfit * (settings[item.id] / 100))}
                                             </td>
                                         </tr>
                                     ))}
@@ -2599,11 +2159,8 @@ const Reports = () => {
     });
 
     useEffect(() => {
-        const fetchTransactions = async () => {
-            const allTransactions = await TransactionService.getAll();
-            setTransactions(allTransactions);
-        };
-        fetchTransactions();
+        const allTransactions = TransactionService.getAll();
+        setTransactions(allTransactions);
     }, []);
 
     useEffect(() => {
@@ -2668,11 +2225,10 @@ const Reports = () => {
         link.click();
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = (id) => {
         if (confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
-            await TransactionService.delete(id);
-            const updatedTrx = await TransactionService.getAll();
-            setTransactions(updatedTrx);
+            TransactionService.delete(id);
+            setTransactions(TransactionService.getAll());
         }
     };
 
@@ -2910,15 +2466,9 @@ const Reports = () => {
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         {trx.attachment ? (
-                                            <a
-                                                href={trx.attachment}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer z-50 relative mx-auto no-underline"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
+                                            <button className="text-blue-600 hover:underline text-xs flex items-center justify-center gap-1 mx-auto">
                                                 <Icon name="paperclip" size={14} /> Lihat
-                                            </a>
+                                            </button>
                                         ) : (
                                             <span className="text-xs text-slate-300 italic">Tidak ada</span>
                                         )}
@@ -2963,8 +2513,8 @@ const AIAnalysis = () => {
 
     useEffect(() => {
         // Simulate AI Processing Delay
-        const timer = setTimeout(async () => {
-            const transactions = await TransactionService.getAll();
+        const timer = setTimeout(() => {
+            const transactions = TransactionService.getAll();
             const today = new Date();
             const last6Months = [];
 
@@ -3199,60 +2749,20 @@ const AIAnalysis = () => {
     );
 };
 
+
+
 const App = () => {
     const [user, setUser] = useState(null);
     const [activeModule, setActiveModule] = useState('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [showPinModal, setShowPinModal] = useState(false);
-    const [pinInput, setPinInput] = useState('');
-    const [pendingModule, setPendingModule] = useState(null);
 
     useEffect(() => {
-        // Check initial session
-        AuthService.getUser().then(session => {
-            setUser(session);
-        });
-
-        // Listen for auth changes
-        const { data: authListener } = AuthService.onAuthStateChange((user) => {
-            setUser(user);
-        });
-
-        return () => {
-            if (authListener && authListener.subscription) {
-                authListener.subscription.unsubscribe();
-            }
-        };
+        const session = AuthService.getUser();
+        if (session) setUser(session);
     }, []);
 
     const handleLogin = (userData) => setUser(userData);
-    const handleLogout = async () => {
-        await AuthService.logout();
-        setUser(null);
-        window.location.reload();
-    };
-
-    const handleNavigation = (moduleId) => {
-        if (moduleId === 'dividends' || moduleId === 'reports') {
-            setPendingModule(moduleId);
-            setShowPinModal(true);
-            setPinInput('');
-        } else {
-            setActiveModule(moduleId);
-        }
-    };
-
-    const verifyPin = (e) => {
-        e.preventDefault();
-        if (pinInput === '888888') { // Default PIN
-            setActiveModule(pendingModule);
-            setShowPinModal(false);
-            setPinInput('');
-        } else {
-            alert('PIN Salah! Akses ditolak.');
-            setPinInput('');
-        }
-    };
+    const handleLogout = () => { AuthService.logout(); setUser(null); };
 
     if (!user) return <Login onLogin={handleLogin} />;
 
@@ -3266,6 +2776,7 @@ const App = () => {
             case 'dividends': return <Dividends />;
             case 'reports': return <Reports />;
             case 'ai_analysis': return <AIAnalysis />;
+
             default: return <Dashboard />;
         }
     };
@@ -3310,11 +2821,12 @@ const App = () => {
                         { id: 'transactions', icon: 'dollar-sign', label: 'Transaksi' },
                         { id: 'dividends', icon: 'pie-chart', label: 'Dividen & Laba' },
                         { id: 'reports', icon: 'bar-chart-2', label: 'Laporan' },
-                        { id: 'ai_analysis', icon: 'bot', label: 'AI Analis' }
+                        { id: 'ai_analysis', icon: 'bot', label: 'AI Analis' },
+
                     ].map(item => (
                         <button
                             key={item.id}
-                            onClick={() => handleNavigation(item.id)}
+                            onClick={() => setActiveModule(item.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${activeModule === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                         >
                             <Icon name={item.icon} size={20} className={activeModule === item.id ? 'text-white' : 'text-slate-500 group-hover:text-white transition-colors'} />
@@ -3349,47 +2861,6 @@ const App = () => {
                     {renderContent()}
                 </div>
             </main>
-
-            {/* PIN Modal */}
-            {showPinModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 animate-in fade-in zoom-in duration-300">
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mx-auto mb-4">
-                                <Icon name="lock" size={32} />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900">Masukkan PIN Keamanan</h3>
-                            <p className="text-sm text-slate-500 mt-1">Menu ini diproteksi untuk menjaga privasi data.</p>
-                        </div>
-                        <form onSubmit={verifyPin} className="space-y-6">
-                            <input
-                                type="password"
-                                className="w-full text-center text-3xl font-bold tracking-[1em] p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:tracking-normal"
-                                placeholder="******"
-                                maxLength="6"
-                                value={pinInput}
-                                onChange={(e) => setPinInput(e.target.value)}
-                                autoFocus
-                            />
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowPinModal(false); setPinInput(''); }}
-                                    className="w-full py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors"
-                                >
-                                    Batal
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all"
-                                >
-                                    Buka Akses
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
